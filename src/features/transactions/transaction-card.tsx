@@ -124,58 +124,6 @@ export function TransactionCard({
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
-          {isMenuOpen ? (
-            <div className="absolute bottom-full right-0 z-[60] mb-2 flex w-56 flex-col rounded-2xl border border-border bg-popover p-2 shadow-soft">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-popover-foreground transition hover:bg-muted"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  setIsEditOpen(true);
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-                Editar
-              </button>
-              {canSettle ? (
-                <Link
-                  href={`/add?mode=settlement&transactionId=${transaction.id}`}
-                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-popover-foreground transition hover:bg-muted"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <ReceiptText className="h-4 w-4" />
-                  Registrar liquidación
-                </Link>
-              ) : (
-                <span className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground">
-                  <ReceiptText className="h-4 w-4" />
-                  Sin liquidación pendiente
-                </span>
-              )}
-              <button
-                type="button"
-                disabled={isPending || !canCancel}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted-foreground"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  startTransition(async () => {
-                    const result = await cancelTransactionAction(transaction.id);
-
-                    if (!result.ok) {
-                      toast.error(result.message);
-                      return;
-                    }
-
-                    toast.success(result.message);
-                    router.refresh();
-                  });
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-                {canCancel ? "Cancelar" : "Ya cancelado"}
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
 
@@ -288,6 +236,82 @@ export function TransactionCard({
                 onSuccess={() => setIsEditOpen(false)}
               />
             </Card>
+          </div>
+        </div>
+      ) : null}
+
+      {isMenuOpen ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/35 p-3 sm:items-center" onClick={() => setIsMenuOpen(false)}>
+          <div
+            className="w-full max-w-sm rounded-[28px] border border-border bg-background p-3 shadow-soft"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center justify-between px-2 pt-1">
+              <div>
+                <p className="text-sm font-semibold">{transaction.title}</p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(transaction.amount, transaction.currency)}</p>
+              </div>
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground transition hover:bg-muted"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-2 flex flex-col">
+              <button
+                type="button"
+                className="inline-flex min-h-12 items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-foreground transition hover:bg-muted"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsEditOpen(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Editar
+              </button>
+
+              {canSettle ? (
+                <Link
+                  href={`/add?mode=settlement&transactionId=${transaction.id}`}
+                  className="inline-flex min-h-12 items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <ReceiptText className="h-4 w-4" />
+                  Registrar liquidación
+                </Link>
+              ) : (
+                <div className="inline-flex min-h-12 items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium text-muted-foreground">
+                  <ReceiptText className="h-4 w-4" />
+                  Sin liquidación pendiente
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={isPending || !canCancel}
+                className="inline-flex min-h-12 items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted-foreground"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  startTransition(async () => {
+                    const result = await cancelTransactionAction(transaction.id);
+
+                    if (!result.ok) {
+                      toast.error(result.message);
+                      return;
+                    }
+
+                    toast.success(result.message);
+                    router.refresh();
+                  });
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                {canCancel ? "Cancelar" : "Ya cancelado"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
