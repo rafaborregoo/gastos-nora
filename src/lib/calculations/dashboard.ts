@@ -11,6 +11,7 @@ export function buildMonthlyDashboard(params: {
   savingsTarget: number;
   savingsProgress: number;
   availableGoalCategories: AppDashboard["availableGoalCategories"];
+  memberStats: AppDashboard["memberStats"];
 }): AppDashboard {
   const totalExpenses =
     params.summaries.find((summary) => summary.type === "expense" && summary.month === params.month)
@@ -34,6 +35,7 @@ export function buildMonthlyDashboard(params: {
     tips: params.tips,
     savingsTarget: params.savingsTarget,
     savingsProgress: params.savingsProgress,
-    availableGoalCategories: params.availableGoalCategories
+    availableGoalCategories: params.availableGoalCategories,
+    memberStats: params.memberStats
   };
 }

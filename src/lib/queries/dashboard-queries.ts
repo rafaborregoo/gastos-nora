@@ -3,10 +3,11 @@ import "server-only";
 import { unstable_noStore as noStore } from "next/cache";
 
 import { buildDashboardGoals, buildDashboardTips } from "@/lib/calculations/budget-goals";
+import { calculateMemberBalances } from "@/lib/calculations/transactions";
 import { buildMonthlyDashboard } from "@/lib/calculations/dashboard";
 import { getBudgetGoals } from "@/lib/queries/budget-goal-queries";
 import { getCurrentHouseholdBundle } from "@/lib/queries/household-queries";
-import { getTransactionBalances } from "@/lib/queries/transaction-queries";
+import { getTransactionBalances, getTransactions } from "@/lib/queries/transaction-queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { CategoryMonthlyExpenseView, MonthlySummaryView } from "@/types/database";
 
@@ -34,7 +35,7 @@ export async function getDashboardData(month: string) {
   const supabase = createServerSupabaseClient();
   const months = getLastMonths(6);
 
-  const [summaryResponse, categoryResponse, pendingByTransaction, categoriesResponse, savedGoals] = await Promise.all([
+  const [summaryResponse, categoryResponse, pendingByTransaction, categoriesResponse, savedGoals, transactions] = await Promise.all([
     supabase
       .from("v_monthly_summary")
       .select("*")
@@ -51,7 +52,8 @@ export async function getDashboardData(month: string) {
       .select("id, name, color, icon, kind")
       .eq("household_id", context.household.id)
       .order("name", { ascending: true }),
-    getBudgetGoals(context.household.id)
+    getBudgetGoals(context.household.id),
+    getTransactions({ month })
   ]);
 
   if (summaryResponse.error) {
@@ -107,6 +109,30 @@ export async function getDashboardData(month: string) {
     balance: totalIncome - totalExpenses,
     goals
   });
+  const balances = calculateMemberBalances(
+    transactions.map((transaction) => ({
+      transaction,
+      splits: transaction.splits,
+      settlements: transaction.settlements
+    }))
+  );
+  const memberStats = context.members.map((member) => ({
+    userId: member.user_id,
+    label: member.profile?.full_name ?? member.profile?.email ?? member.user_id,
+    role: member.role,
+    totalPaidExpenses: transactions
+      .filter((transaction) => transaction.type === "expense" && transaction.paid_by_user_id === member.user_id)
+      .reduce((sum, transaction) => sum + transaction.amount, 0),
+    totalRecordedIncome: transactions
+      .filter(
+        (transaction) =>
+          transaction.type === "income" &&
+          (transaction.beneficiary_user_id === member.user_id ||
+            (!transaction.beneficiary_user_id && transaction.paid_by_user_id === member.user_id))
+      )
+      .reduce((sum, transaction) => sum + transaction.amount, 0),
+    netPosition: balances.get(member.user_id) ?? 0
+  }));
 
   return buildMonthlyDashboard({
     month: `${month}-01`,
@@ -118,6 +144,7 @@ export async function getDashboardData(month: string) {
     tips,
     savingsProgress,
     savingsTarget,
-    availableGoalCategories
+    availableGoalCategories,
+    memberStats
   });
 }

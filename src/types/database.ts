@@ -280,6 +280,7 @@ export interface AppDashboard {
   savingsTarget: number;
   savingsProgress: number;
   availableGoalCategories: Pick<Category, "id" | "name" | "color" | "icon" | "kind">[];
+  memberStats: DashboardMemberStat[];
 }
 
 export interface DashboardGoal {
@@ -301,4 +302,13 @@ export interface DashboardTip {
   tone: "positive" | "warning" | "critical";
   title: string;
   description: string;
+}
+
+export interface DashboardMemberStat {
+  userId: string;
+  label: string;
+  role: HouseholdRole;
+  totalPaidExpenses: number;
+  totalRecordedIncome: number;
+  netPosition: number;
 }

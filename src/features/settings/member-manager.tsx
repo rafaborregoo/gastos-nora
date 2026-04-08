@@ -29,6 +29,13 @@ export function MemberManager({
   const [email, setEmail] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const buildInviteLink = (inviteEmail: string) => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    return `${window.location.origin}/accept-invite?email=${encodeURIComponent(inviteEmail)}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -62,6 +69,9 @@ export function MemberManager({
               <input type="checkbox" className="h-4 w-4" checked={sendEmail} onChange={(event) => setSendEmail(event.target.checked)} />
               Enviar correo ahora si la persona aún no tiene cuenta
             </label>
+            <p className="text-xs text-muted-foreground">
+              Si Supabase limita el correo, guarda la invitación sin enviar email y comparte el enlace manualmente.
+            </p>
           </div>
         </Card>
       ) : (
@@ -125,29 +135,48 @@ export function MemberManager({
                     Estado: {invitation.status} · correo {invitation.send_email ? "activado" : "no enviado"}
                   </p>
                 </div>
-                {isOwner && invitation.status !== "accepted" ? (
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={isPending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        const result = await revokeHouseholdInvitationAction({ invitationId: invitation.id });
+                    onClick={async () => {
+                      const inviteLink = buildInviteLink(invitation.email);
 
-                        if (!result.ok) {
-                          toast.error(result.message);
-                          return;
-                        }
-
-                        toast.success(result.message);
-                        router.refresh();
-                      });
+                      try {
+                        await navigator.clipboard.writeText(inviteLink);
+                        toast.success("Enlace de invitación copiado.");
+                      } catch {
+                        toast.error("No se pudo copiar el enlace.");
+                      }
                     }}
                   >
-                    Revocar
+                    Copiar enlace
                   </Button>
-                ) : null}
+                  {isOwner && invitation.status !== "accepted" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const result = await revokeHouseholdInvitationAction({ invitationId: invitation.id });
+
+                          if (!result.ok) {
+                            toast.error(result.message);
+                            return;
+                          }
+
+                          toast.success(result.message);
+                          router.refresh();
+                        });
+                      }}
+                    >
+                      Revocar
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ))
           ) : (

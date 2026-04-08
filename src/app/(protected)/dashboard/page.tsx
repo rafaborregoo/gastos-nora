@@ -83,6 +83,45 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
+      <Card className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Resumen por persona</h2>
+          <p className="text-sm text-muted-foreground">
+            Así puedes ver quién ha pagado más, quién ha registrado ingresos y cómo va la posición neta de cada persona.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {dashboard.memberStats.map((member) => (
+            <div key={member.userId} className="rounded-[24px] border border-border bg-background/70 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="font-medium">{member.label}</p>
+                <Badge intent={member.role === "owner" ? "info" : "neutral"}>
+                  {member.role === "owner" ? "Propietaria/o" : "Miembro"}
+                </Badge>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Gastos pagados</span>
+                  <span className="font-semibold">{formatCurrency(member.totalPaidExpenses)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Ingresos registrados</span>
+                  <span className="font-semibold">{formatCurrency(member.totalRecordedIncome)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Posición neta</span>
+                  <span className={`font-semibold ${member.netPosition >= 0 ? "text-success" : "text-danger"}`}>
+                    {member.netPosition >= 0
+                      ? `Le deben ${formatCurrency(member.netPosition)}`
+                      : `Debe ${formatCurrency(Math.abs(member.netPosition))}`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <BudgetPlanner dashboard={dashboard} savedGoals={savedGoals} />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
