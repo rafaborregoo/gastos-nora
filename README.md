@@ -11,6 +11,7 @@ Aplicacion web mobile-first para control de gastos e ingresos personales y compa
 - React Hook Form + Zod
 - Recharts
 - ESLint
+- PWA instalable con `manifest` y `service worker`
 
 ## Variables de entorno
 
@@ -201,6 +202,27 @@ Esto funciona en hosting siempre que pongas estas variables en el servidor:
 - `APP_URL`
 
 En Vercel, Railway, Render o similar, `SUPABASE_SERVICE_ROLE_KEY` debe quedar como secreto de servidor y no exponerse al navegador.
+
+## PWA
+
+La app queda preparada como PWA instalable:
+
+- `public/site.webmanifest`
+- `public/sw.js`
+- `public/offline.html`
+
+### Qué ofrece esta primera versión
+
+- instalación en móvil y desktop
+- iconos y nombre de app configurados
+- pantalla offline básica
+- cache de recursos estáticos e iconos
+
+### Importante
+
+- para que la instalación funcione correctamente, la app debe servirse por `https`
+- en local también puede registrar `service worker` en `localhost`
+- el modo offline no sustituye al backend: sin conexión no podrá operar con Supabase, pero sí mostrar la pantalla offline y mantenerse instalable
 
 ## Reglas de negocio clave
 

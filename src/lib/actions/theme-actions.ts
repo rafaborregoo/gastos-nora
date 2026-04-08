@@ -63,7 +63,7 @@ export async function saveUserThemeAction(values: unknown): Promise<ActionResult
     const user = await getAuthenticatedUser();
 
     if (!user) {
-      return errorResult("Debes iniciar sesion para guardar tu tema.");
+      return errorResult("Debes iniciar sesión para guardar tu tema.");
     }
 
     const tokens = buildThemeTokensFromControls({
@@ -97,7 +97,7 @@ export async function resetUserThemeAction(): Promise<ActionResult> {
     const user = await getAuthenticatedUser();
 
     if (!user) {
-      return errorResult("Debes iniciar sesion para restaurar el tema.");
+      return errorResult("Debes iniciar sesión para restaurar el tema.");
     }
 
     const supabase = createServerSupabaseClient();
@@ -123,14 +123,14 @@ export async function resetUserThemeAction(): Promise<ActionResult> {
 export async function generateUserThemeWithAiAction(values: unknown): Promise<ActionResult<{ themeName: string }>> {
   try {
     if (!isAiThemeGenerationEnabled()) {
-      return errorResult("La generacion de temas con IA esta desactivada temporalmente.");
+      return errorResult("La generación de temas con IA está desactivada temporalmente.");
     }
 
     const parsed = generateThemeSchema.parse(values);
     const user = await getAuthenticatedUser();
 
     if (!user) {
-      return errorResult("Debes iniciar sesion para generar un tema con IA.");
+      return errorResult("Debes iniciar sesión para generar un tema con IA.");
     }
 
     const generated = await generateThemeWithOpenAi(parsed.prompt);

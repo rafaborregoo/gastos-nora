@@ -1,6 +1,10 @@
 {
   "name": "NORA Gastos",
   "short_name": "NORA",
+  "description": "Control de gastos e ingresos personales y compartidos.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -17,5 +21,7 @@
   ],
   "theme_color": "#129474",
   "background_color": "#f9f5ed",
-  "display": "standalone"
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "lang": "es-ES"
 }

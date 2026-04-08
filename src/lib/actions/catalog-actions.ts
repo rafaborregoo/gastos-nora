@@ -1,7 +1,7 @@
 "use server";
 
-import { categorySchema } from "@/lib/validators/categories";
 import { accountSchema } from "@/lib/validators/accounts";
+import { categorySchema } from "@/lib/validators/categories";
 import { getAppContext } from "@/lib/queries/household-queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
@@ -113,7 +113,7 @@ async function syncOpeningBalance(params: {
     category_id: null,
     type: "adjustment" as const,
     title: `Saldo inicial · ${params.accountName}`,
-    description: "Movimiento de apertura generado desde la configuracion de cuentas.",
+    description: "Movimiento de apertura generado desde la configuración de cuentas.",
     amount: params.amount,
     currency: params.currency,
     paid_by_user_id: params.ownerUserId,
@@ -170,7 +170,7 @@ export async function upsertCategoryAction(values: unknown): Promise<ActionResul
     }
 
     revalidateAppPaths();
-    return successResult(parsed.id ? "Categoria actualizada." : "Categoria creada.");
+    return successResult(parsed.id ? "Categoría actualizada." : "Categoría creada.");
   } catch (error) {
     return handleActionError(error);
   }
@@ -195,7 +195,7 @@ export async function upsertAccountAction(values: unknown): Promise<ActionResult
         : uniqueIds([sanitizedOwnerId, ...requestedMemberIds]);
 
     if (parsed.type !== "shared" && !sanitizedOwnerId) {
-      return errorResult("Selecciona una persona titular valida.");
+      return errorResult("Selecciona una persona titular válida.");
     }
 
     if (parsed.type === "shared" && linkedMemberIds.length === 0) {
@@ -276,3 +276,73 @@ export async function toggleAccountActiveAction(accountId: string, nextActiveSta
   }
 }
 
+export async function deleteAccountAction(accountId: string): Promise<ActionResult> {
+  try {
+    const { householdBundle } = await getAppContext();
+
+    if (!householdBundle) {
+      return errorResult("Necesitas un hogar activo.");
+    }
+
+    const supabase = createServerSupabaseClient();
+    const transactionsResponse = await supabase
+      .from("transactions")
+      .select("id, type, metadata")
+      .eq("account_id", accountId)
+      .eq("household_id", householdBundle.household.id);
+
+    if (transactionsResponse.error) {
+      return errorResult(transactionsResponse.error.message);
+    }
+
+    const relatedTransactions = transactionsResponse.data ?? [];
+    const openingBalanceTransactions = relatedTransactions.filter((transaction) => {
+      const metadata = (transaction.metadata ?? {}) as Json;
+
+      return (
+        transaction.type === "adjustment" &&
+        typeof metadata === "object" &&
+        !Array.isArray(metadata) &&
+        metadata?.system === "opening_balance"
+      );
+    });
+
+    if (relatedTransactions.length > openingBalanceTransactions.length) {
+      return errorResult("No puedes borrar una cuenta que ya tiene movimientos. Archívala si quieres ocultarla.");
+    }
+
+    if (openingBalanceTransactions.length) {
+      const { error: deleteOpeningBalanceError } = await supabase
+        .from("transactions")
+        .delete()
+        .in(
+          "id",
+          openingBalanceTransactions.map((transaction) => transaction.id as string)
+        );
+
+      if (deleteOpeningBalanceError) {
+        return errorResult(deleteOpeningBalanceError.message);
+      }
+    }
+
+    const deleteMembersResponse = await supabase.from("account_members").delete().eq("account_id", accountId);
+    if (deleteMembersResponse.error && !isAccountMembersTableMissing(deleteMembersResponse.error)) {
+      return errorResult(deleteMembersResponse.error.message);
+    }
+
+    const { error: deleteAccountError } = await supabase
+      .from("accounts")
+      .delete()
+      .eq("id", accountId)
+      .eq("household_id", householdBundle.household.id);
+
+    if (deleteAccountError) {
+      return errorResult(deleteAccountError.message);
+    }
+
+    revalidateAppPaths();
+    return successResult("Cuenta eliminada.");
+  } catch (error) {
+    return handleActionError(error);
+  }
+}

@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { saveTransactionAction } from "@/lib/actions/transaction-actions";
-import { transactionSchema } from "@/lib/validators/transactions";
 import { formatCurrency } from "@/lib/formatters/currency";
+import { transactionSchema } from "@/lib/validators/transactions";
 import { toDateInputValue } from "@/lib/utils";
 import type { Category, TransactionWithRelations } from "@/types/database";
 import type { TransactionFormValues } from "@/types/forms";
@@ -129,18 +129,18 @@ export function TransactionForm({
   );
 
   return (
-    <Card className="p-6">
-      <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+    <Card className="p-4 sm:p-5 md:p-6">
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <CardTitle>{initialTransaction ? "Editar movimiento" : "Nuevo movimiento"}</CardTitle>
           <CardDescription>Registra el movimiento respetando quién pagó, cómo se reparte y qué queda pendiente.</CardDescription>
         </div>
-        <div className="flex rounded-full bg-muted p-1">
+        <div className="flex w-full rounded-full bg-muted p-1 md:w-auto">
           {(["expense", "income"] as const).map((item) => (
             <button
               key={item}
               type="button"
-              className={`rounded-full px-4 py-2 text-sm font-medium ${type === item ? "bg-card shadow-soft" : "text-muted-foreground"}`}
+              className={`flex-1 rounded-full px-4 py-2.5 text-sm font-medium md:flex-none ${type === item ? "bg-card shadow-soft" : "text-muted-foreground"}`}
               onClick={() => form.setValue("type", item)}
             >
               {item === "expense" ? "Gasto" : "Ingreso"}
@@ -212,7 +212,7 @@ export function TransactionForm({
 
         {type === "expense" ? (
           <div className="space-y-4 rounded-[24px] border border-border bg-background/60 p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-sm font-semibold">Reparto</h3>
                 <p className="text-sm text-muted-foreground">
@@ -229,9 +229,9 @@ export function TransactionForm({
               <>
                 <FormField label="Método de reparto" error={form.formState.errors.splitMethod?.message}>
                   <Select {...form.register("splitMethod")}>
-                    <option value="equal">Equal</option>
-                    <option value="percentage">Percentage</option>
-                    <option value="fixed">Fixed</option>
+                    <option value="equal">A partes iguales</option>
+                    <option value="percentage">Porcentaje</option>
+                    <option value="fixed">Importe fijo</option>
                   </Select>
                 </FormField>
                 <div className="space-y-3">
@@ -270,11 +270,11 @@ export function TransactionForm({
           <Textarea rows={3} {...form.register("note")} />
         </FormField>
 
-        <div className="flex flex-col gap-3 md:flex-row">
-          <Button type="submit" disabled={isPending}>
+        <div className="flex flex-col gap-3 border-t border-border pt-2 md:flex-row md:border-0 md:pt-0">
+          <Button type="submit" disabled={isPending} className="w-full md:w-auto">
             Guardar movimiento
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+          <Button type="button" variant="outline" onClick={() => router.back()} className="w-full md:w-auto">
             Cancelar
           </Button>
         </div>
@@ -282,4 +282,3 @@ export function TransactionForm({
     </Card>
   );
 }
-

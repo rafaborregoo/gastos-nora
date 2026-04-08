@@ -45,7 +45,7 @@ export function SettlementForm({
   });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-5 md:p-6">
       <div className="mb-6 space-y-2">
         <CardTitle>Nueva liquidación</CardTitle>
         <CardDescription>Registra Bizums o pagos posteriores sin tocar el gasto original.</CardDescription>
@@ -95,7 +95,7 @@ export function SettlementForm({
           <FormField label="Método" error={form.formState.errors.method?.message}>
             <Select {...form.register("method")}>
               <option value="bizum">Bizum</option>
-              <option value="cash">Cash</option>
+              <option value="cash">Efectivo</option>
               <option value="bank_transfer">Transferencia</option>
               <option value="card">Tarjeta</option>
               <option value="other">Otro</option>
@@ -105,11 +105,11 @@ export function SettlementForm({
         <FormField label="Nota" error={form.formState.errors.note?.message}>
           <Textarea rows={3} {...form.register("note")} />
         </FormField>
-        <div className="flex flex-col gap-3 md:flex-row">
-          <Button type="submit" disabled={isPending}>
+        <div className="flex flex-col gap-3 border-t border-border pt-2 md:flex-row md:border-0 md:pt-0">
+          <Button type="submit" disabled={isPending} className="w-full md:w-auto">
             Registrar liquidación
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+          <Button type="button" variant="outline" onClick={() => router.back()} className="w-full md:w-auto">
             Cancelar
           </Button>
         </div>
@@ -117,4 +117,3 @@ export function SettlementForm({
     </Card>
   );
 }
-

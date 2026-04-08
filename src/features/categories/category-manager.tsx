@@ -37,7 +37,7 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
       <Card className="space-y-4">
-        <h2 className="text-lg font-semibold">Nueva categoria</h2>
+        <h2 className="text-lg font-semibold">Nueva categoría</h2>
         <form
           className="space-y-4"
           onSubmit={form.handleSubmit((values) => {
@@ -85,7 +85,7 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
             <IconPicker value={selectedIcon} onChange={(value) => form.setValue("icon", value, { shouldValidate: true })} />
           </FormField>
           <Button type="submit" disabled={isPending}>
-            Guardar categoria
+            Guardar categoría
           </Button>
         </form>
       </Card>
@@ -117,4 +117,3 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
     </div>
   );
 }
-

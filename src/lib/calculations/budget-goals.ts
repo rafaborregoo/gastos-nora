@@ -9,12 +9,12 @@ const SUGGESTED_PERCENT_RULES: Array<{ pattern: RegExp; percent: number }> = [
   { pattern: /supermercado|compra|mercado/i, percent: 12 },
   { pattern: /comida fuera|restaurante|ocio/i, percent: 8 },
   { pattern: /transporte|gasolina|coche|bus|tren/i, percent: 10 },
-  { pattern: /salud|medico|farmacia/i, percent: 6 },
+  { pattern: /salud|médico|medico|farmacia/i, percent: 6 },
   { pattern: /mascota/i, percent: 5 },
-  { pattern: /tecnologia|movil|internet/i, percent: 6 },
-  { pattern: /ropa|peluqueria|belleza/i, percent: 5 },
+  { pattern: /tecnología|tecnologia|móvil|movil|internet/i, percent: 6 },
+  { pattern: /ropa|peluquería|peluqueria|belleza/i, percent: 5 },
   { pattern: /vacaciones|viaje/i, percent: 7 },
-  { pattern: /familia|bebe/i, percent: 8 }
+  { pattern: /familia|bebé|bebe/i, percent: 8 }
 ];
 
 function getSuggestedPercent(categoryName: string, spentAmount: number, totalIncome: number) {
@@ -127,10 +127,10 @@ export function buildDashboardTips(params: {
     tips.push({
       id: `goal-${exceededGoal.categoryId}`,
       tone: exceededGoal.progressRatio >= 1.35 ? "critical" : "warning",
-      title: `La categoria ${exceededGoal.categoryName} se esta desviando`,
+      title: `La categoría ${exceededGoal.categoryName} se está desviando`,
       description: `Lleva ${exceededGoal.spentAmount.toFixed(2)} EUR frente a un objetivo de ${exceededGoal.targetAmount.toFixed(
         2
-      )} EUR. Ajustar esa categoria tendria impacto directo este mes.`
+      )} EUR. Ajustar esa categoría tendría impacto directo este mes.`
     });
   }
 
@@ -139,7 +139,7 @@ export function buildDashboardTips(params: {
       id: "expense-ratio",
       tone: "critical",
       title: "Gasto mensual demasiado pegado al ingreso",
-      description: "Estais consumiendo mas del 90% del ingreso del mes. Conviene fijar topes mas estrictos en 1 o 2 categorias."
+      description: "Estáis consumiendo más del 90 % del ingreso del mes. Conviene fijar topes más estrictos en una o dos categorías."
     });
   }
 
@@ -148,7 +148,7 @@ export function buildDashboardTips(params: {
       id: "baseline",
       tone: "positive",
       title: "Panel de control activo",
-      description: "Define objetivos por categoria para convertir el dashboard en una guia mensual y no solo en historico."
+      description: "Define objetivos por categoría para convertir el panel en una guía mensual y no solo en histórico."
     });
   }
 

@@ -27,11 +27,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Ajustes" description="Configuracion del espacio activo, miembros y supuestos tecnicos visibles." />
+      <PageHeader title="Ajustes" description="Configuración del hogar activo, miembros y personalización visual." />
       <Card className="space-y-2">
-        <h2 className="text-lg font-semibold">Supuesto actual de household</h2>
+        <h2 className="text-lg font-semibold">Hogar activo</h2>
         <p className="text-sm text-muted-foreground">
-          Si un usuario pertenece a mas de un household, NORA Gastos usa el primer membership activo por fecha de creacion.
+          Si una persona pertenece a varios hogares, NORA Gastos usa la primera membresía activa por fecha de creación.
         </p>
       </Card>
       <ThemeManager

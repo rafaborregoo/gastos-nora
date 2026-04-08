@@ -191,7 +191,7 @@ export async function createSettlementAction(values: unknown): Promise<ActionRes
     }
 
     if (parsed.fromUserId === parsed.toUserId) {
-      return errorResult("El emisor y el receptor no pueden ser la misma persona.");
+      return errorResult("La persona que paga y la que recibe no pueden ser la misma.");
     }
 
     let transactionTitle = "Liquidación general";

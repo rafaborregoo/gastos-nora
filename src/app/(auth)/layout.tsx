@@ -18,7 +18,8 @@ export default function AuthLayout({
               </h1>
             </div>
             <p className="max-w-xl text-base text-muted-foreground">
-              Registra quien pago, como se reparte cada gasto y cuanto queda pendiente. Todo conectado con Supabase y pensado para movil.
+              Registra quién pagó, cómo se reparte cada gasto y cuánto queda pendiente. Todo conectado con Supabase y
+              pensado para móvil.
             </p>
           </div>
         </div>
@@ -27,4 +28,3 @@ export default function AuthLayout({
     </div>
   );
 }
-

@@ -35,7 +35,9 @@ export function TransactionCard({
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <TransactionStatusBadge status={transaction.status} />
-            {transaction.is_shared ? <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Compartido</span> : null}
+            {transaction.is_shared ? (
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Compartido</span>
+            ) : null}
           </div>
           <div>
             <h3 className="text-lg font-semibold">{transaction.title}</h3>
@@ -43,12 +45,14 @@ export function TransactionCard({
           </div>
         </div>
         <div className="text-left md:text-right">
-          <p className="font-mono text-2xl font-semibold">{formatCurrency(transaction.amount, transaction.currency)}</p>
+          <p className="font-mono text-xl font-semibold sm:text-2xl">
+            {formatCurrency(transaction.amount, transaction.currency)}
+          </p>
           <p className="text-sm text-muted-foreground">{formatDisplayDate(transaction.transaction_date)}</p>
         </div>
       </div>
 
-      <div className="grid gap-3 text-sm md:grid-cols-4">
+      <div className="grid gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
         <div>
           <p className="text-muted-foreground">Categoría</p>
           <p className="font-medium">{transaction.category?.name ?? "Sin categoría"}</p>
@@ -68,7 +72,7 @@ export function TransactionCard({
       </div>
 
       <details className="rounded-2xl border border-border bg-background/60 p-4">
-        <summary className="cursor-pointer list-none text-sm font-semibold">Ver detalle, reparto y auditoría</summary>
+        <summary className="cursor-pointer list-none py-1 text-sm font-semibold">Ver detalle, reparto y auditoría</summary>
         <div className="mt-4 space-y-4 text-sm">
           <div>
             <p className="mb-2 font-semibold">Splits</p>
@@ -122,27 +126,24 @@ export function TransactionCard({
         </div>
       </details>
 
-      <div className="flex flex-col gap-3 md:flex-row">
+      <div className="grid gap-3 sm:grid-cols-2 xl:flex">
         <Link
           href={`/add?mode=transaction&id=${transaction.id}`}
-          className={cn(
-            "inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border px-4 text-sm font-semibold"
-          )}
+          className={cn("inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border px-4 text-sm font-semibold")}
         >
           <Pencil className="h-4 w-4" />
           Editar
         </Link>
         <Link
           href={`/add?mode=settlement&transactionId=${transaction.id}`}
-          className={cn(
-            "inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border px-4 text-sm font-semibold"
-          )}
+          className={cn("inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border px-4 text-sm font-semibold")}
         >
           <ReceiptText className="h-4 w-4" />
           Registrar liquidación
         </Link>
         <Button
           variant="ghost"
+          className="w-full sm:col-span-2 xl:w-auto"
           disabled={isPending}
           onClick={() => {
             startTransition(async () => {

@@ -12,9 +12,9 @@ import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { deleteAccountAction, toggleAccountActiveAction, upsertAccountAction } from "@/lib/actions/catalog-actions";
 import { formatCurrency } from "@/lib/formatters/currency";
 import { accountSchema } from "@/lib/validators/accounts";
-import { toggleAccountActiveAction, upsertAccountAction } from "@/lib/actions/catalog-actions";
 import type { AccountWithDetails } from "@/types/database";
 import type { AccountFormValues } from "@/types/forms";
 
@@ -112,7 +112,7 @@ export function AccountManager({
           <div>
             <h2 className="text-lg font-semibold">{editingAccount ? "Editar cuenta" : "Nueva cuenta"}</h2>
             <p className="text-sm text-muted-foreground">
-              El saldo inicial se guarda como un movimiento de apertura, no como un numero aislado.
+              El saldo inicial se guarda como un movimiento de apertura, no como un número aislado.
             </p>
           </div>
           {editingAccount ? (
@@ -146,7 +146,7 @@ export function AccountManager({
               <Select {...form.register("type")}>
                 <option value="personal">Personal</option>
                 <option value="shared">Compartida</option>
-                <option value="cash">Cash</option>
+                <option value="cash">Efectivo</option>
                 <option value="bank">Banco</option>
                 <option value="savings">Ahorro</option>
               </Select>
@@ -158,7 +158,7 @@ export function AccountManager({
           {selectedType !== "shared" ? (
             <FormField label="Titular principal" error={form.formState.errors.ownerUserId?.message}>
               <Select {...form.register("ownerUserId")}>
-                <option value="">Selecciona persona</option>
+                <option value="">Selecciona a una persona</option>
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.label}
@@ -246,6 +246,39 @@ export function AccountManager({
                 >
                   {account.is_active ? "Archivar" : "Reactivar"}
                 </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      "Solo se puede borrar una cuenta sin movimientos reales. Si ya tiene historial, tendrás que archivarla. ¿Quieres continuar?"
+                    );
+
+                    if (!confirmed) {
+                      return;
+                    }
+
+                    startTransition(async () => {
+                      const result = await deleteAccountAction(account.id);
+
+                      if (!result.ok) {
+                        toast.error(result.message);
+                        return;
+                      }
+
+                      if (editingAccountId === account.id) {
+                        resetForm();
+                      }
+
+                      toast.success(result.message);
+                      router.refresh();
+                    });
+                  }}
+                >
+                  Borrar
+                </Button>
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -268,7 +301,7 @@ export function AccountManager({
                     </Badge>
                   ))
                 ) : (
-                  <span className="text-sm text-muted-foreground">Sin personas vinculadas todavia.</span>
+                  <span className="text-sm text-muted-foreground">Sin personas vinculadas todavía.</span>
                 )}
               </div>
             </div>

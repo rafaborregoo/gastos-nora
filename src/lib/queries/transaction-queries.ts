@@ -22,6 +22,19 @@ interface TransactionFilters {
   status?: string;
 }
 
+function isAuditLogUnavailable(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  return (
+    error.code === "42P01" ||
+    error.code === "42501" ||
+    error.code === "PGRST205" ||
+    error.message?.toLowerCase().includes("transaction_audit_log") === true
+  );
+}
+
 function buildMonthRange(month?: string) {
   if (!month) {
     return null;
@@ -122,7 +135,7 @@ export async function getTransactionById(id: string) {
     throw new Error(transactionResponse.error.message);
   }
 
-  if (auditResponse.error) {
+  if (auditResponse.error && !isAuditLogUnavailable(auditResponse.error)) {
     throw new Error(auditResponse.error.message);
   }
 

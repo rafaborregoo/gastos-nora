@@ -36,7 +36,7 @@ export async function generateThemeWithOpenAi(prompt: string): Promise<{
   rationale?: string;
 }> {
   if (!isAiThemeGenerationEnabled()) {
-    throw new Error("La generacion de temas con IA esta desactivada temporalmente.");
+    throw new Error("La generación de temas con IA está desactivada temporalmente.");
   }
 
   const env = getOpenAiEnv();
@@ -146,14 +146,14 @@ export async function generateThemeWithOpenAi(prompt: string): Promise<{
   const outputText = data.output_text;
 
   if (!outputText) {
-    throw new Error("OpenAI no devolvio contenido util para el tema.");
+    throw new Error("OpenAI no devolvió contenido útil para el tema.");
   }
 
   const parsed = openAiThemeResponseSchema.parse(JSON.parse(outputText));
   const validatedTokens = validateThemeTokens(parsed.tokens);
 
   if (!validatedTokens) {
-    throw new Error("La IA devolvio colores invalidos o con contraste insuficiente.");
+    throw new Error("La IA devolvió colores inválidos o con contraste insuficiente.");
   }
 
   return {

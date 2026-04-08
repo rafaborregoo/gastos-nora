@@ -1,9 +1,9 @@
 import { ExpensePieChart } from "@/components/charts/expense-pie-chart";
 import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { BudgetPlanner } from "@/features/dashboard/budget-planner";
 import { formatCurrency } from "@/lib/formatters/currency";
 import { formatDisplayDate } from "@/lib/formatters/date";
@@ -16,24 +16,24 @@ export default async function DashboardPage() {
   const [dashboard, savedGoals] = await Promise.all([getDashboardData(currentMonth), getBudgetGoals()]);
 
   if (!dashboard) {
-    return <EmptyState title="Sin dashboard todavia" description="Necesitas movimientos para empezar a ver analitica mensual." />;
+    return <EmptyState title="Sin análisis todavía" description="Necesitas movimientos para empezar a ver analítica mensual." />;
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dashboard" description="Analitica mensual, objetivos por categoria y tips para mejorar el margen." />
+      <PageHeader title="Análisis" description="Analítica mensual, objetivos por categoría y consejos para mejorar el margen." />
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <p className="text-sm text-muted-foreground">Gasto mensual</p>
-          <p className="mt-3 text-3xl font-semibold">{formatCurrency(dashboard.totalExpenses)}</p>
+          <p className="mt-3 text-2xl font-semibold sm:text-3xl">{formatCurrency(dashboard.totalExpenses)}</p>
         </Card>
         <Card>
           <p className="text-sm text-muted-foreground">Ingreso mensual</p>
-          <p className="mt-3 text-3xl font-semibold">{formatCurrency(dashboard.totalIncome)}</p>
+          <p className="mt-3 text-2xl font-semibold sm:text-3xl">{formatCurrency(dashboard.totalIncome)}</p>
         </Card>
         <Card>
           <p className="text-sm text-muted-foreground">Balance mensual</p>
-          <p className="mt-3 text-3xl font-semibold">{formatCurrency(dashboard.balance)}</p>
+          <p className="mt-3 text-2xl font-semibold sm:text-3xl">{formatCurrency(dashboard.balance)}</p>
         </Card>
       </div>
 
@@ -41,7 +41,7 @@ export default async function DashboardPage() {
         <Card className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Ahorro objetivo</h2>
-            <p className="text-sm text-muted-foreground">Referencia automatica del 20% del ingreso del mes.</p>
+            <p className="text-sm text-muted-foreground">Referencia automática del 20 % del ingreso del mes.</p>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -64,15 +64,15 @@ export default async function DashboardPage() {
         </Card>
         <Card className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Tips del mes</h2>
-            <p className="text-sm text-muted-foreground">Consejos generados desde vuestros ingresos, gasto y categorias.</p>
+            <h2 className="text-lg font-semibold">Consejos del mes</h2>
+            <p className="text-sm text-muted-foreground">Consejos generados a partir de vuestros ingresos, gasto y categorías.</p>
           </div>
           <div className="space-y-3">
             {dashboard.tips.map((tip) => (
               <div key={tip.id} className="rounded-[24px] border border-border bg-background/70 p-4">
-                <div className="mb-2 flex items-center gap-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge intent={tip.tone === "positive" ? "success" : tip.tone === "critical" ? "danger" : "warning"}>
-                    {tip.tone === "positive" ? "En forma" : tip.tone === "critical" ? "Urgente" : "Atencion"}
+                    {tip.tone === "positive" ? "En forma" : tip.tone === "critical" ? "Urgente" : "Atención"}
                   </Badge>
                   <p className="font-medium">{tip.title}</p>
                 </div>
@@ -87,24 +87,24 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
-          <h2 className="mb-2 text-lg font-semibold">Gasto por categoria</h2>
+          <h2 className="mb-2 text-lg font-semibold">Gasto por categoría</h2>
           <ExpensePieChart data={dashboard.expenseByCategory} />
         </Card>
         <Card>
-          <h2 className="mb-2 text-lg font-semibold">Evolucion mensual</h2>
+          <h2 className="mb-2 text-lg font-semibold">Evolución mensual</h2>
           <MonthlyTrendChart data={dashboard.monthlyTrend} />
         </Card>
       </div>
       <Card>
-        <h2 className="mb-4 text-lg font-semibold">Pendientes por transaccion</h2>
+        <h2 className="mb-4 text-lg font-semibold">Pendientes por transacción</h2>
         <div className="space-y-3">
           {dashboard.pendingByTransaction.map((item) => (
-            <div key={item.transaction_id} className="flex items-center justify-between rounded-2xl border border-border px-4 py-3">
-              <div>
-                <p className="font-medium">{item.title}</p>
+            <div key={item.transaction_id} className="flex items-center justify-between gap-3 rounded-2xl border border-border px-4 py-4">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{item.title}</p>
                 <p className="text-sm text-muted-foreground">{formatDisplayDate(item.transaction_date)}</p>
               </div>
-              <p className="font-semibold">{formatCurrency(item.pending_amount)}</p>
+              <p className="shrink-0 font-semibold">{formatCurrency(item.pending_amount)}</p>
             </div>
           ))}
         </div>
@@ -112,4 +112,3 @@ export default async function DashboardPage() {
     </div>
   );
 }
-

@@ -42,7 +42,7 @@ export function OnboardingForm({ userId, userName }: { userId: string; userName:
       <div className="mb-6 space-y-2">
         <CardTitle>Configura tu hogar</CardTitle>
         <CardDescription>
-          Crea el espacio compartido, guarda una invitacion pendiente y decide si quieres enviar correo ahora o no.
+          Crea el espacio compartido, guarda una invitación pendiente y decide si quieres enviar el correo ahora o no.
         </CardDescription>
       </div>
       <form
@@ -72,10 +72,10 @@ export function OnboardingForm({ userId, userName }: { userId: string; userName:
           </FormField>
           <label className="flex items-center gap-2 text-sm text-foreground">
             <input type="checkbox" className="h-4 w-4" {...form.register("sendInviteEmail")} disabled={!hasInviteEmail} />
-            Enviar correo de invitacion si todavia no tiene cuenta
+            Enviar correo de invitación si todavía no tiene cuenta
           </label>
           <p className="text-xs text-muted-foreground">
-            Si no marcas esta opcion, se guarda la invitacion pendiente y podras reenviarla mas tarde desde Ajustes.
+            Si no marcas esta opción, se guarda la invitación pendiente y podrás reenviarla más tarde desde Ajustes.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export function OnboardingForm({ userId, userName }: { userId: string; userName:
               onClick={() => accounts.append({ name: "", type: "bank", ownerUserId: null })}
             >
               <Plus className="h-4 w-4" />
-              Anadir
+              Añadir
             </Button>
           </div>
           <div className="space-y-3">
@@ -102,7 +102,7 @@ export function OnboardingForm({ userId, userName }: { userId: string; userName:
                 <Select {...form.register(`accounts.${index}.type`)}>
                   <option value="personal">Personal</option>
                   <option value="shared">Compartida</option>
-                  <option value="cash">Cash</option>
+                  <option value="cash">Efectivo</option>
                   <option value="bank">Banco</option>
                   <option value="savings">Ahorro</option>
                 </Select>
@@ -127,4 +127,3 @@ export function OnboardingForm({ userId, userName }: { userId: string; userName:
     </Card>
   );
 }
-

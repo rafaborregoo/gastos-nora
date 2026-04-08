@@ -2,9 +2,50 @@ import { createClient } from "@supabase/supabase-js";
 
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
+function normalizeAppUrl(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function resolveAppUrl() {
+  const explicitAppUrl = normalizeAppUrl(process.env.APP_URL);
+
+  if (explicitAppUrl) {
+    return explicitAppUrl;
+  }
+
+  const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercelProductionUrl) {
+    return normalizeAppUrl(`https://${vercelProductionUrl}`);
+  }
+
+  const vercelPreviewUrl = process.env.VERCEL_URL;
+  if (vercelPreviewUrl) {
+    return normalizeAppUrl(`https://${vercelPreviewUrl}`);
+  }
+
+  return null;
+}
+
+function isLocalhostUrl(value: string) {
+  try {
+    const host = new URL(value).hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 function getSupabaseAdminEnv() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const appUrl = process.env.APP_URL;
+  const appUrl = resolveAppUrl();
 
   return {
     ...getSupabaseEnv(),
@@ -45,5 +86,9 @@ export function getAppUrl() {
     throw new Error("Falta APP_URL en el entorno del servidor.");
   }
 
-  return env.appUrl.replace(/\/$/, "");
+  if (process.env.NODE_ENV === "production" && isLocalhostUrl(env.appUrl)) {
+    throw new Error("APP_URL no puede apuntar a localhost en producción.");
+  }
+
+  return env.appUrl;
 }

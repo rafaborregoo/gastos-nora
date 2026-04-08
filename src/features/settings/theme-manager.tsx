@@ -66,7 +66,7 @@ export function ThemeManager({
           <div>
             <h2 className="text-lg font-semibold">Tema visual</h2>
             <p className="text-sm text-muted-foreground">
-              Ajusta colores base y guarda un estilo propio para tu sesion y tus dispositivos.
+              Ajusta colores base y guarda un estilo propio para tu sesión y tus dispositivos.
             </p>
           </div>
           {themePreference ? (
@@ -160,7 +160,7 @@ export function ThemeManager({
             <div className="space-y-4 rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-[hsl(var(--card-foreground))]">
               <div className="space-y-1">
                 <p className="text-lg font-semibold">Vista previa</p>
-                <p className="text-sm text-[hsl(var(--muted-foreground))]">Asi se verian cards, acciones y mensajes.</p>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Así se verían tarjetas, acciones y mensajes.</p>
               </div>
               <div className="flex gap-2">
                 <span className="inline-flex rounded-full bg-[hsl(var(--primary))] px-3 py-1 text-xs font-semibold text-[hsl(var(--primary-foreground))]">
@@ -183,9 +183,9 @@ export function ThemeManager({
       </Card>
       {!aiThemeGenerationEnabled ? (
         <Card className="space-y-2">
-          <h2 className="text-lg font-semibold">Generacion IA desactivada</h2>
+          <h2 className="text-lg font-semibold">Generación con IA desactivada</h2>
           <p className="text-sm text-muted-foreground">
-            El generador de temas con OpenAI esta oculto por ahora. Puedes seguir personalizando colores manualmente.
+            El generador de temas con OpenAI está oculto por ahora. Puedes seguir personalizando colores manualmente.
           </p>
         </Card>
       ) : null}

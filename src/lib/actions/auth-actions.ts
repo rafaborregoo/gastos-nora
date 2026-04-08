@@ -17,7 +17,7 @@ export async function signInAction(values: unknown): Promise<ActionResult> {
       return errorResult(error.message);
     }
 
-    return successResult("Sesion iniciada.");
+    return successResult("Sesión iniciada.");
   } catch (error) {
     return handleActionError(error);
   }
@@ -56,9 +56,8 @@ export async function signOutAction(): Promise<ActionResult> {
       return errorResult(error.message);
     }
 
-    return successResult("Sesion cerrada.");
+    return successResult("Sesión cerrada.");
   } catch (error) {
     return handleActionError(error);
   }
 }
-

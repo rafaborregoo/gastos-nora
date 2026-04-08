@@ -137,7 +137,7 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
     const { user, profile } = await getAppContext();
 
     if (!user || !profile) {
-      return errorResult("Debes iniciar sesion.");
+      return errorResult("Debes iniciar sesión.");
     }
 
     const supabase = createServerSupabaseClient();
@@ -149,7 +149,7 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
 
     if (!persistedProfile.data) {
       return errorResult(
-        "Falta tu fila en public.profiles. Con tu RLS actual la app no puede crearla. Ejecuta tu SQL de sincronizacion auth.users -> public.profiles o anade una policy/trigger antes de crear el household."
+        "Falta tu fila en public.profiles. Con tu RLS actual la app no puede crearla. Ejecuta el SQL de sincronización auth.users -> public.profiles o añade una policy/trigger antes de crear el hogar."
       );
     }
 
@@ -237,7 +237,7 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
           }
         }
 
-        invitationMessage = " La persona invitada ya estaba registrada y se ha anadido al hogar.";
+        invitationMessage = " La persona invitada ya estaba registrada y se ha añadido al hogar.";
       } else {
         try {
           const invitation = await createInvitationRecord({
@@ -249,13 +249,13 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
 
           invitationMessage =
             invitation.status === "sent"
-              ? " Se ha creado la invitacion y se ha enviado el correo."
-              : " Se ha creado la invitacion pendiente sin enviar correo.";
+              ? " Se ha creado la invitación y se ha enviado el correo."
+              : " Se ha creado la invitación pendiente sin enviar correo.";
         } catch (invitationError) {
           invitationMessage =
             invitationError instanceof Error
-              ? ` El hogar se ha creado, pero la invitacion no se pudo completar: ${invitationError.message}`
-              : " El hogar se ha creado, pero la invitacion no se pudo completar.";
+              ? ` El hogar se ha creado, pero la invitación no se pudo completar: ${invitationError.message}`
+              : " El hogar se ha creado, pero la invitación no se pudo completar.";
         }
       }
     }
@@ -322,7 +322,7 @@ export async function addHouseholdMemberAction(values: unknown): Promise<ActionR
       }
 
       revalidateAppPaths();
-      return successResult("Miembro anadido al hogar.");
+      return successResult("Miembro añadido al hogar.");
     }
 
     if (!hasSupabaseAdminEnv()) {
@@ -341,8 +341,8 @@ export async function addHouseholdMemberAction(values: unknown): Promise<ActionR
     revalidateAppPaths();
     return successResult(
       invitation.status === "sent"
-        ? "Invitacion creada y correo enviado."
-        : "Invitacion pendiente creada sin enviar correo."
+        ? "Invitación creada y correo enviado."
+        : "Invitación pendiente creada sin enviar correo."
     );
   } catch (error) {
     return handleActionError(error);
@@ -423,7 +423,7 @@ export async function revokeHouseholdInvitationAction(values: unknown): Promise<
     }
 
     if (!invitation) {
-      return errorResult("La invitacion ya no existe o no pertenece al hogar activo.");
+      return errorResult("La invitación ya no existe o no pertenece al hogar activo.");
     }
 
     const { error: updateError } = await admin
@@ -439,7 +439,7 @@ export async function revokeHouseholdInvitationAction(values: unknown): Promise<
     }
 
     revalidateAppPaths();
-    return successResult(invitation.status === "revoked" ? "La invitacion ya estaba revocada." : "Invitacion revocada.");
+    return successResult(invitation.status === "revoked" ? "La invitación ya estaba revocada." : "Invitación revocada.");
   } catch (error) {
     return handleActionError(error);
   }

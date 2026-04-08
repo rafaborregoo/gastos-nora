@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NORA Gastos · Sin conexión</title>
+    <meta name="theme-color" content="#129474" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f9f5ed;
+        --fg: #18212d;
+        --muted: #6b7280;
+        --card: #ffffff;
+        --border: #e6dccc;
+        --primary: #129474;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top right, rgba(18, 148, 116, 0.12), transparent 32%),
+          radial-gradient(circle at bottom left, rgba(234, 109, 47, 0.10), transparent 24%),
+          var(--bg);
+        color: var(--fg);
+      }
+
+      .card {
+        width: min(100%, 420px);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: var(--card);
+        padding: 28px 24px;
+        box-shadow: 0 18px 60px rgba(24, 33, 45, 0.08);
+      }
+
+      .logo {
+        width: 160px;
+        height: auto;
+      }
+
+      h1 {
+        margin: 20px 0 8px;
+        font-size: 1.75rem;
+        line-height: 1.1;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .actions {
+        margin-top: 20px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        border-radius: 18px;
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .button-primary {
+        background: var(--primary);
+        color: white;
+      }
+
+      .button-secondary {
+        border: 1px solid var(--border);
+        color: var(--fg);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img class="logo" src="/logo_nora_gastos.png" alt="NORA Gastos" />
+      <h1>Ahora mismo estás sin conexión</h1>
+      <p>Puedes volver a intentarlo cuando recuperes internet. NORA seguirá disponible para instalarse como app.</p>
+      <div class="actions">
+        <a class="button button-primary" href="/">Reintentar</a>
+        <a class="button button-secondary" href="/login">Ir al acceso</a>
+      </div>
+    </main>
+  </body>
+</html>

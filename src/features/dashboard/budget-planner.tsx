@@ -75,7 +75,7 @@ export function BudgetPlanner({
                   </span>
                   <div>
                     <p className="font-medium">{goal.categoryName}</p>
-                    <p className="text-sm text-muted-foreground">Limite mensual {formatCurrency(goal.targetAmount)}</p>
+                    <p className="text-sm text-muted-foreground">Límite mensual {formatCurrency(goal.targetAmount)}</p>
                   </div>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => prefilling(goal)}>
@@ -96,7 +96,7 @@ export function BudgetPlanner({
                   />
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{goal.isCustom ? "Limite personalizado" : "Limite sugerido"}</span>
+                  <span>{goal.isCustom ? "Límite personalizado" : "Límite sugerido"}</span>
                   <span>
                     {isExceeded ? `Te pasas ${formatCurrency(goal.varianceAmount)}` : `Te quedan ${formatCurrency(remainingAmount)}`}
                   </span>
@@ -109,7 +109,7 @@ export function BudgetPlanner({
       <Card className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Editar objetivos</h2>
-          <p className="text-sm text-muted-foreground">Define un limite mensual en euros por categoria.</p>
+          <p className="text-sm text-muted-foreground">Define un límite mensual en euros por categoría.</p>
         </div>
         <form
           className="space-y-4"
@@ -133,7 +133,7 @@ export function BudgetPlanner({
           })}
         >
           <input type="hidden" {...form.register("id")} />
-          <FormField label="Categoria" error={form.formState.errors.categoryId?.message}>
+          <FormField label="Categoría" error={form.formState.errors.categoryId?.message}>
             <Select {...form.register("categoryId")}>
               {dashboard.availableGoalCategories.map((category) => (
                 <option key={category.id} value={category.id}>
@@ -142,7 +142,7 @@ export function BudgetPlanner({
               ))}
             </Select>
           </FormField>
-          <FormField label="Limite mensual" error={form.formState.errors.targetAmount?.message}>
+          <FormField label="Límite mensual" error={form.formState.errors.targetAmount?.message}>
             <Input
               type="number"
               step="0.01"
@@ -151,14 +151,14 @@ export function BudgetPlanner({
               {...form.register("targetAmount", { valueAsNumber: true })}
             />
           </FormField>
-          <FormField label="Resumen rapido">
+          <FormField label="Resumen rápido">
             <Input
               value={
                 selectedGoal
                   ? projectedVariance > 0
                     ? `Con el gasto actual te pasas ${formatCurrency(projectedVariance)}`
                     : `Con el gasto actual te quedan ${formatCurrency(Math.abs(projectedVariance))}`
-                  : `Nuevo limite mensual: ${formatCurrency(selectedAmount)}`
+                  : `Nuevo límite mensual: ${formatCurrency(selectedAmount)}`
               }
               disabled
             />

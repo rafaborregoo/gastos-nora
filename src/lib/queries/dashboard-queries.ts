@@ -68,7 +68,7 @@ export async function getDashboardData(month: string) {
 
   const summaries = (summaryResponse.data as MonthlySummaryView[]) ?? [];
   const expenseByCategory = ((categoryResponse.data as CategoryMonthlyExpenseView[]) ?? []).map((item) => ({
-    categoryName: item.category_name ?? "Sin categoria",
+    categoryName: item.category_name ?? "Sin categoría",
     totalAmount: item.total_amount
   }));
 
@@ -121,4 +121,3 @@ export async function getDashboardData(month: string) {
     availableGoalCategories
   });
 }
-

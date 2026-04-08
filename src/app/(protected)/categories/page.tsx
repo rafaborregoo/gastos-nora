@@ -7,9 +7,8 @@ export default async function CategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Categorias" description="Crea y mantiene categorias del hogar con iconos, color y tipo de uso." />
+      <PageHeader title="Categorías" description="Crea y mantiene categorías del hogar con iconos, color y tipo de uso." />
       <CategoryManager categories={categories} />
     </div>
   );
 }
-

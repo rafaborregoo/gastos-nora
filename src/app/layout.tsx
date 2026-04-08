@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Manrope } from "next/font/google";
 
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 import { AppToaster } from "@/components/ui/app-toaster";
 import { getCurrentUserThemePreference } from "@/lib/queries/theme-queries";
 import { getDefaultThemeTokens, themeVariablesToStyle } from "@/lib/theme";
@@ -20,7 +21,16 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "NORA Gastos",
   description: "Finanzas domesticas compartidas con Next.js y Supabase.",
+  applicationName: "NORA Gastos",
   manifest: "/site.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NORA Gastos"
+  },
+  formatDetection: {
+    telephone: false
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -44,6 +54,7 @@ export default async function RootLayout({
   return (
     <html lang="es" className={mode === "dark" ? "dark" : undefined} style={themeVariablesToStyle(tokens)}>
       <body className={`${manrope.variable} ${plexMono.variable} font-sans`}>
+        <PwaProvider />
         {children}
         <AppToaster />
       </body>

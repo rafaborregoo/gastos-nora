@@ -34,7 +34,7 @@ export function MemberManager({
     <div className="space-y-6">
       {isOwner ? (
         <Card className="space-y-4">
-          <h2 className="text-lg font-semibold">Invitar miembro</h2>
+          <h2 className="text-lg font-semibold">Invitar a una persona</h2>
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 md:flex-row">
               <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="persona@email.com" type="email" />
@@ -55,18 +55,18 @@ export function MemberManager({
                   });
                 }}
               >
-                Guardar invitacion
+                Guardar invitación
               </Button>
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="h-4 w-4" checked={sendEmail} onChange={(event) => setSendEmail(event.target.checked)} />
-              Enviar correo ahora si la persona aun no tiene cuenta
+              Enviar correo ahora si la persona aún no tiene cuenta
             </label>
           </div>
         </Card>
       ) : (
         <Card className="space-y-2">
-          <h2 className="text-lg font-semibold">Gestion del hogar</h2>
+          <h2 className="text-lg font-semibold">Gestión del hogar</h2>
           <p className="text-sm text-muted-foreground">
             Solo la persona que ha creado el hogar puede invitar, eliminar miembros o revocar invitaciones.
           </p>
@@ -80,7 +80,7 @@ export function MemberManager({
             <div key={member.id} className="flex items-center justify-between rounded-2xl border border-border px-4 py-3">
               <div>
                 <p className="font-medium">{member.label}</p>
-                <p className="text-sm text-muted-foreground">{member.email ?? "Sin email visible"}</p>
+                <p className="text-sm text-muted-foreground">{member.email ?? "Sin correo visible"}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{member.role}</span>

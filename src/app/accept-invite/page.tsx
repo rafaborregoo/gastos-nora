@@ -22,9 +22,10 @@ export default async function AcceptInvitePage({
     <main className="mx-auto flex min-h-screen w-full max-w-2xl items-center px-4 py-10">
       <Card className="w-full space-y-6 p-8">
         <div className="space-y-2">
-          <CardTitle>Invitacion recibida</CardTitle>
+          <CardTitle>Invitación recibida</CardTitle>
           <CardDescription>
-            Si ya tienes cuenta, entra con el mismo correo. Si todavia no la tienes, registrate primero y NORA Gastos te unira automaticamente al hogar pendiente.
+            Si ya tienes cuenta, entra con el mismo correo. Si todavía no la tienes, regístrate primero y NORA
+            Gastos te unirá automáticamente al hogar pendiente.
           </CardDescription>
         </div>
         <div className="flex flex-col gap-3 md:flex-row">
