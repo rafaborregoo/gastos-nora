@@ -3,13 +3,13 @@ import "server-only";
 import { unstable_noStore as noStore } from "next/cache";
 
 import { buildDashboardGoals, buildDashboardTips } from "@/lib/calculations/budget-goals";
+import { buildAnalysisScopes, buildMonthlyDashboard } from "@/lib/calculations/dashboard";
 import { calculateMemberBalances } from "@/lib/calculations/transactions";
-import { buildMonthlyDashboard } from "@/lib/calculations/dashboard";
 import { getBudgetGoals } from "@/lib/queries/budget-goal-queries";
-import { getCurrentHouseholdBundle } from "@/lib/queries/household-queries";
+import { getAccounts, getAppContext } from "@/lib/queries/household-queries";
 import { getTransactionBalances, getTransactions } from "@/lib/queries/transaction-queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { CategoryMonthlyExpenseView, MonthlySummaryView } from "@/types/database";
+import type { MonthlySummaryView } from "@/types/database";
 
 function getLastMonths(months: number) {
   const values: string[] = [];
@@ -24,9 +24,13 @@ function getLastMonths(months: number) {
   return values;
 }
 
+function isTransactionInMonth(transactionDate: string, monthStart: string, monthEnd: string) {
+  return transactionDate >= monthStart && transactionDate < monthEnd;
+}
+
 export async function getDashboardData(month: string) {
   noStore();
-  const context = await getCurrentHouseholdBundle();
+  const { user, householdBundle: context } = await getAppContext();
 
   if (!context) {
     return null;
@@ -34,18 +38,12 @@ export async function getDashboardData(month: string) {
 
   const supabase = createServerSupabaseClient();
   const months = getLastMonths(6);
+  const currentMonthStart = `${month}-01`;
+  const nextMonth = new Date(`${currentMonthStart}T00:00:00.000Z`);
+  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+  const currentMonthEnd = nextMonth.toISOString().slice(0, 10);
 
-  const [summaryResponse, categoryResponse, pendingByTransaction, categoriesResponse, savedGoals, transactions] = await Promise.all([
-    supabase
-      .from("v_monthly_summary")
-      .select("*")
-      .eq("household_id", context.household.id)
-      .gte("month", months[0]),
-    supabase
-      .from("v_category_monthly_expenses")
-      .select("*")
-      .eq("household_id", context.household.id)
-      .eq("month", `${month}-01`),
+  const [pendingByTransaction, categoriesResponse, savedGoals, allVisibleTransactions, visibleAccounts] = await Promise.all([
     getTransactionBalances(),
     supabase
       .from("categories")
@@ -53,43 +51,54 @@ export async function getDashboardData(month: string) {
       .eq("household_id", context.household.id)
       .order("name", { ascending: true }),
     getBudgetGoals(context.household.id),
-    getTransactions({ month })
+    getTransactions(),
+    getAccounts(context.household.id, { includeInactive: true })
   ]);
-
-  if (summaryResponse.error) {
-    throw new Error(summaryResponse.error.message);
-  }
-
-  if (categoryResponse.error) {
-    throw new Error(categoryResponse.error.message);
-  }
 
   if (categoriesResponse.error) {
     throw new Error(categoriesResponse.error.message);
   }
 
-  const summaries = (summaryResponse.data as MonthlySummaryView[]) ?? [];
-  const expenseByCategory = ((categoryResponse.data as CategoryMonthlyExpenseView[]) ?? []).map((item) => ({
-    categoryName: item.category_name ?? "Sin categoría",
-    totalAmount: item.total_amount
-  }));
+  const currentMonthTransactions = allVisibleTransactions.filter((transaction) =>
+    isTransactionInMonth(transaction.transaction_date, currentMonthStart, currentMonthEnd)
+  );
 
-  const trend = months.map((currentMonth) => {
-    const income =
-      summaries.find((summary) => summary.month === currentMonth && summary.type === "income")?.total_amount ?? 0;
-    const expense =
-      summaries.find((summary) => summary.month === currentMonth && summary.type === "expense")?.total_amount ?? 0;
-
-    return {
-      month: currentMonth,
-      income,
-      expense
-    };
+  const analysisScopes = buildAnalysisScopes({
+    currentMonth: currentMonthStart,
+    trendMonths: months,
+    accounts: visibleAccounts,
+    transactions: allVisibleTransactions,
+    currentUserId: user?.id
   });
 
-  const currentMonthSummaries = summaries.filter((summary) => summary.month === `${month}-01`);
-  const totalExpenses = currentMonthSummaries.find((summary) => summary.type === "expense")?.total_amount ?? 0;
-  const totalIncome = currentMonthSummaries.find((summary) => summary.type === "income")?.total_amount ?? 0;
+  const overviewScope = analysisScopes[0];
+  const totalExpenses = overviewScope?.totalExpenses ?? 0;
+  const totalIncome = overviewScope?.totalIncome ?? 0;
+  const expenseByCategory = overviewScope?.expenseByCategory ?? [];
+  const trend = (overviewScope?.monthlyTrend ?? []).map((item) => ({
+    month: item.month,
+    income: item.income,
+    expense: item.expense
+  }));
+  const summaries: MonthlySummaryView[] = months.flatMap((monthStart) => {
+    const monthScope = overviewScope?.monthlyTrend.find((item) => item.month === monthStart);
+
+    return [
+      {
+        household_id: context.household.id,
+        month: monthStart,
+        type: "income",
+        total_amount: monthScope?.income ?? 0
+      },
+      {
+        household_id: context.household.id,
+        month: monthStart,
+        type: "expense",
+        total_amount: monthScope?.expense ?? 0
+      }
+    ];
+  });
+
   const availableGoalCategories = ((categoriesResponse.data ?? []) as Array<{
     id: string;
     name: string;
@@ -97,59 +106,97 @@ export async function getDashboardData(month: string) {
     icon: string | null;
     kind: "expense" | "income" | "both";
   }>).filter((category) => category.kind === "expense" || category.kind === "both");
+
   const goals = buildDashboardGoals({
     totalIncome,
     categoryExpenses: expenseByCategory,
     categories: availableGoalCategories,
     savedGoals
   });
+
   const { tips, savingsProgress, savingsTarget } = buildDashboardTips({
     totalIncome,
     totalExpenses,
     balance: totalIncome - totalExpenses,
     goals
   });
+
   const balances = calculateMemberBalances(
-    transactions.map((transaction) => ({
+    allVisibleTransactions.map((transaction) => ({
       transaction,
       splits: transaction.splits,
       settlements: transaction.settlements
     }))
   );
-  const memberStats = context.members.map((member) => ({
-    userId: member.user_id,
-    label: member.profile?.full_name ?? member.profile?.email ?? member.user_id,
-    role: member.role,
-    totalPaidExpenses: transactions
-      .filter((transaction) => transaction.type === "expense" && transaction.paid_by_user_id === member.user_id)
-      .reduce((sum, transaction) => sum + transaction.amount, 0),
-    totalRecordedIncome: transactions
-      .filter(
-        (transaction) =>
-          transaction.type === "income" &&
-          (transaction.beneficiary_user_id === member.user_id ||
-            (!transaction.beneficiary_user_id && transaction.paid_by_user_id === member.user_id))
-      )
-      .reduce((sum, transaction) => sum + transaction.amount, 0),
-    netPosition: balances.get(member.user_id) ?? 0,
-    recordedTransactions: transactions.filter((transaction) => transaction.created_by === member.user_id).length,
-    lastActivityAt:
-      transactions
-        .filter((transaction) => transaction.created_by === member.user_id)
+
+  const memberStats = context.members.map((member) => {
+    const currentMonthCreatedTransactions = currentMonthTransactions.filter((transaction) => transaction.created_by === member.user_id);
+    const lastCreatedTransaction = allVisibleTransactions
+      .filter((transaction) => transaction.created_by === member.user_id)
+      .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())[0];
+
+    return {
+      userId: member.user_id,
+      label: member.profile?.full_name ?? member.profile?.email ?? member.user_id,
+      role: member.role,
+      totalPaidExpenses: currentMonthTransactions
+        .filter((transaction) => transaction.type === "expense" && transaction.paid_by_user_id === member.user_id)
+        .reduce((sum, transaction) => sum + transaction.amount, 0),
+      totalRecordedIncome: currentMonthTransactions
+        .filter(
+          (transaction) =>
+            transaction.type === "income" &&
+            (transaction.beneficiary_user_id === member.user_id ||
+              (!transaction.beneficiary_user_id && transaction.paid_by_user_id === member.user_id))
+        )
+        .reduce((sum, transaction) => sum + transaction.amount, 0),
+      netPosition: balances.get(member.user_id) ?? 0,
+      recordedTransactions: currentMonthCreatedTransactions.length,
+      lastActivityAt: lastCreatedTransaction?.created_at ?? null
+    };
+  });
+
+  const myCreatedTransactions = user
+    ? currentMonthTransactions.filter((transaction) => transaction.created_by === user.id)
+    : [];
+  const myExpenses = user
+    ? currentMonthTransactions
+        .filter((transaction) => transaction.type === "expense" && transaction.paid_by_user_id === user.id)
+        .reduce((sum, transaction) => sum + transaction.amount, 0)
+    : 0;
+  const myIncome = user
+    ? currentMonthTransactions
+        .filter(
+          (transaction) =>
+            transaction.type === "income" &&
+            (transaction.beneficiary_user_id === user.id ||
+              (!transaction.beneficiary_user_id && transaction.paid_by_user_id === user.id))
+        )
+        .reduce((sum, transaction) => sum + transaction.amount, 0)
+    : 0;
+  const myLastActivity = user
+    ? allVisibleTransactions
+        .filter((transaction) => transaction.created_by === user.id)
         .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())[0]?.created_at ?? null
-  }));
+    : null;
 
   return buildMonthlyDashboard({
-    month: `${month}-01`,
+    month: currentMonthStart,
     summaries,
     categoryExpenses: expenseByCategory,
     trend,
     pendingByTransaction,
+    myExpenses,
+    myIncome,
+    myRecordedTransactions: myCreatedTransactions.length,
+    myLastActivityAt: myLastActivity,
+    myNetPosition: user ? balances.get(user.id) ?? 0 : 0,
     goals,
     tips,
     savingsProgress,
     savingsTarget,
     availableGoalCategories,
-    memberStats
+    memberStats,
+    analysisScopes
   });
 }

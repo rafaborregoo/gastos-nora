@@ -23,17 +23,18 @@ interface MemberOption {
   label: string;
 }
 
-function getDefaultValues(members: MemberOption[], account?: AccountWithDetails | null): AccountFormValues {
-  const primaryMemberId = members[0]?.id ?? null;
-
+function getDefaultValues(currentUserId?: string, account?: AccountWithDetails | null): AccountFormValues {
   return {
     id: account?.id,
     name: account?.name ?? "",
     type: account?.type ?? "bank",
-    ownerUserId: account?.owner_user_id ?? primaryMemberId,
+    ownerUserId: account?.owner_user_id ?? currentUserId ?? null,
     memberUserIds:
-      account?.members.map((member) => member.user_id) ??
-      (primaryMemberId ? [primaryMemberId] : []),
+      account?.type === "shared"
+        ? account.members.map((member) => member.user_id)
+        : currentUserId
+          ? [currentUserId]
+          : [],
     currency: account?.currency ?? "EUR",
     initialBalance: account?.opening_balance ?? 0
   };
@@ -41,56 +42,49 @@ function getDefaultValues(members: MemberOption[], account?: AccountWithDetails 
 
 export function AccountManager({
   accounts,
-  members
+  members,
+  currentUserId,
+  currentUserLabel
 }: {
   accounts: AccountWithDetails[];
   members: MemberOption[];
+  currentUserId?: string;
+  currentUserLabel?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const form = useForm<AccountFormValues>({
+    resolver: zodResolver(accountSchema),
+    defaultValues: getDefaultValues(currentUserId)
+  });
+
   const editingAccount = useMemo(
     () => accounts.find((account) => account.id === editingAccountId) ?? null,
     [accounts, editingAccountId]
   );
-  const form = useForm<AccountFormValues>({
-    resolver: zodResolver(accountSchema),
-    defaultValues: getDefaultValues(members)
-  });
   const selectedType = useWatch({ control: form.control, name: "type" });
-  const selectedOwnerId = useWatch({ control: form.control, name: "ownerUserId" });
   const watchedMemberIds = useWatch({ control: form.control, name: "memberUserIds" });
   const selectedMemberIds = useMemo(() => watchedMemberIds ?? [], [watchedMemberIds]);
 
   useEffect(() => {
-    form.reset(getDefaultValues(members, editingAccount));
-  }, [editingAccount, form, members]);
+    form.reset(getDefaultValues(currentUserId, editingAccount));
+  }, [currentUserId, editingAccount, form]);
 
   useEffect(() => {
-    if (selectedType === "shared") {
-      if (!selectedMemberIds.length && members.length) {
-        form.setValue(
-          "memberUserIds",
-          members.map((member) => member.id),
-          { shouldDirty: true }
-        );
-      }
-
-      if (selectedOwnerId !== null) {
-        form.setValue("ownerUserId", null, { shouldDirty: true });
-      }
+    if (!currentUserId) {
       return;
     }
 
-    if (selectedOwnerId && !selectedMemberIds.includes(selectedOwnerId)) {
-      const nextMembers = Array.from(new Set([selectedOwnerId, ...selectedMemberIds]));
-      form.setValue("memberUserIds", nextMembers, { shouldDirty: true });
+    if (selectedType !== "shared") {
+      form.setValue("ownerUserId", currentUserId, { shouldDirty: true });
+      form.setValue("memberUserIds", [currentUserId], { shouldDirty: true });
     }
-  }, [form, members, selectedMemberIds, selectedOwnerId, selectedType]);
+  }, [currentUserId, form, selectedType]);
 
   const resetForm = () => {
     setEditingAccountId(null);
-    form.reset(getDefaultValues(members));
+    form.reset(getDefaultValues(currentUserId));
   };
 
   const toggleMember = (memberId: string) => {
@@ -112,7 +106,7 @@ export function AccountManager({
           <div>
             <h2 className="text-lg font-semibold">{editingAccount ? "Editar cuenta" : "Nueva cuenta"}</h2>
             <p className="text-sm text-muted-foreground">
-              El saldo inicial se guarda como un movimiento de apertura, no como un número aislado.
+              Tus cuentas privadas son solo tuyas. Las compartidas pueden gestionarlas todas las personas del hogar.
             </p>
           </div>
           {editingAccount ? (
@@ -121,6 +115,7 @@ export function AccountManager({
             </Button>
           ) : null}
         </div>
+
         <form
           className="space-y-4"
           onSubmit={form.handleSubmit((values) => {
@@ -141,6 +136,7 @@ export function AccountManager({
           <FormField label="Nombre" error={form.formState.errors.name?.message}>
             <Input {...form.register("name")} />
           </FormField>
+
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Tipo" error={form.formState.errors.type?.message}>
               <Select {...form.register("type")}>
@@ -155,33 +151,21 @@ export function AccountManager({
               <Input maxLength={3} {...form.register("currency")} />
             </FormField>
           </div>
+
           {selectedType !== "shared" ? (
             <FormField label="Titular principal" error={form.formState.errors.ownerUserId?.message}>
-              <Select {...form.register("ownerUserId")}>
-                <option value="">Selecciona a una persona</option>
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.label}
-                  </option>
-                ))}
-              </Select>
+              <Input value={currentUserLabel ?? "Mi cuenta"} disabled readOnly />
             </FormField>
           ) : null}
+
           <FormField label="Saldo inicial" error={form.formState.errors.initialBalance?.message}>
-            <Input
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              {...form.register("initialBalance", { valueAsNumber: true })}
-            />
+            <Input type="number" step="0.01" inputMode="decimal" {...form.register("initialBalance", { valueAsNumber: true })} />
           </FormField>
+
           <FormField label="Personas vinculadas" error={form.formState.errors.memberUserIds?.message as string | undefined}>
             <div className="space-y-2 rounded-[24px] border border-border bg-background/70 p-3">
-              {members.map((member) => {
-                const checked =
-                  selectedType === "shared"
-                    ? selectedMemberIds.includes(member.id)
-                    : member.id === selectedOwnerId || selectedMemberIds.includes(member.id);
+              {(selectedType === "shared" ? members : members.filter((member) => member.id === currentUserId)).map((member) => {
+                const checked = selectedType === "shared" ? selectedMemberIds.includes(member.id) : member.id === currentUserId;
 
                 return (
                   <label key={member.id} className="flex items-center justify-between gap-3 rounded-2xl bg-card px-3 py-2">
@@ -190,7 +174,7 @@ export function AccountManager({
                       type="checkbox"
                       className="h-4 w-4"
                       checked={checked}
-                      disabled={selectedType !== "shared" && member.id === selectedOwnerId}
+                      disabled={selectedType !== "shared"}
                       onChange={() => toggleMember(member.id)}
                     />
                   </label>
@@ -198,6 +182,7 @@ export function AccountManager({
               })}
             </div>
           </FormField>
+
           <div className="flex flex-col gap-3 md:flex-row">
             <Button type="submit" disabled={isPending}>
               {editingAccount ? "Guardar cambios" : "Guardar cuenta"}
@@ -208,6 +193,7 @@ export function AccountManager({
           </div>
         </form>
       </Card>
+
       <div className="space-y-4">
         {accounts.map((account) => (
           <Card key={account.id} className="space-y-4">
@@ -215,15 +201,19 @@ export function AccountManager({
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">{account.name}</p>
-                  <Badge intent={account.is_active ? "success" : "neutral"}>
-                    {account.is_active ? "Activa" : "Archivada"}
-                  </Badge>
+                  <Badge intent={account.is_active ? "success" : "neutral"}>{account.is_active ? "Activa" : "Archivada"}</Badge>
                   <Badge>{account.type}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{account.currency}</p>
               </div>
+
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setEditingAccountId(account.id)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingAccountId(account.id)}
+                >
                   Editar
                 </Button>
                 <Button
@@ -281,6 +271,7 @@ export function AccountManager({
                 </Button>
               </div>
             </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[24px] border border-border bg-background/70 p-4">
                 <p className="text-sm text-muted-foreground">Saldo actual</p>
@@ -291,6 +282,7 @@ export function AccountManager({
                 <p className="mt-1 text-2xl font-semibold">{formatCurrency(account.opening_balance, account.currency)}</p>
               </div>
             </div>
+
             <div className="space-y-2">
               <p className="text-sm font-medium">Personas vinculadas</p>
               <div className="flex flex-wrap gap-2">

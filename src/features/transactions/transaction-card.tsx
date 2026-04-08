@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { ChevronDown, MoreHorizontal, Pencil, ReceiptText, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { TransactionForm } from "@/features/transactions/transaction-form";
 import { TransactionStatusBadge } from "@/features/transactions/status-badge";
@@ -51,6 +52,10 @@ function formatAuditAction(action: string) {
   return labels[action] ?? action;
 }
 
+function resolveMemberLabel(members: Array<{ id: string; label: string }>, userId: string) {
+  return members.find((member) => member.id === userId)?.label ?? userId;
+}
+
 export function TransactionCard({
   transaction,
   auditLog,
@@ -87,15 +92,11 @@ export function TransactionCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <TransactionStatusBadge status={transaction.status} />
-              {transaction.is_shared ? (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
-                  Compartido
-                </span>
-              ) : null}
+              <Badge intent={transaction.is_shared ? "info" : "neutral"}>
+                {transaction.is_shared ? "Compartido" : "Privado"}
+              </Badge>
               {transaction.type === "transfer" ? (
-                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-secondary-foreground">
-                  Transferencia
-                </span>
+                <Badge intent="success">Transferencia</Badge>
               ) : null}
             </div>
             <div className="mt-1.5 flex items-start justify-between gap-3">
@@ -160,7 +161,7 @@ export function TransactionCard({
                 {transaction.splits.length ? (
                   transaction.splits.map((split) => (
                     <div key={split.id} className="flex items-center justify-between gap-3 rounded-xl bg-background px-3 py-2">
-                      <span className="truncate">{split.user_id}</span>
+                      <span className="truncate">{resolveMemberLabel(members, split.user_id)}</span>
                       <span className="font-medium">{formatCurrency(split.share_amount, transaction.currency)}</span>
                     </div>
                   ))

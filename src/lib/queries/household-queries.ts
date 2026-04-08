@@ -179,7 +179,7 @@ export async function getAccounts(
   options?: { includeInactive?: boolean }
 ): Promise<AccountWithDetails[]> {
   noStore();
-  const context = await getCurrentHouseholdBundle();
+  const [context, user] = await Promise.all([getCurrentHouseholdBundle(), getAuthenticatedUser()]);
   const id = householdId ?? context?.household.id;
 
   if (!id) {
@@ -318,29 +318,41 @@ export async function getAccounts(
     }
   }
 
-  return accounts.map((account) => {
-    const derivedMembers =
-      memberMap.get(account.id) ??
-      (account.owner_user_id
-        ? fallbackMemberOptions
-            .filter((member) => member.user_id === account.owner_user_id)
-            .map((member) => ({
-              account_id: account.id,
-              user_id: member.user_id,
-              role: "owner" as const,
-              created_at: account.created_at,
-              profile: member.profile
-            }))
-        : []);
-    const transactions = transactionMap.get(account.id) ?? [];
+  return accounts
+    .map((account) => {
+      const derivedMembers =
+        memberMap.get(account.id) ??
+        (account.owner_user_id
+          ? fallbackMemberOptions
+              .filter((member) => member.user_id === account.owner_user_id)
+              .map((member) => ({
+                account_id: account.id,
+                user_id: member.user_id,
+                role: "owner" as const,
+                created_at: account.created_at,
+                profile: member.profile
+              }))
+          : []);
+      const transactions = transactionMap.get(account.id) ?? [];
 
-    return {
-      ...account,
-      members: derivedMembers,
-      opening_balance: getOpeningBalanceAmount(transactions, account.id),
-      current_balance: calculateAccountCurrentBalance(transactions, account.id)
-    };
-  });
+      return {
+        ...account,
+        members: derivedMembers,
+        opening_balance: getOpeningBalanceAmount(transactions, account.id),
+        current_balance: calculateAccountCurrentBalance(transactions, account.id)
+      };
+    })
+    .filter((account) => {
+      if (!user) {
+        return false;
+      }
+
+      if (account.type === "shared") {
+        return true;
+      }
+
+      return account.owner_user_id === user.id;
+    });
 }
 
 export async function getCategories(householdId?: string): Promise<Category[]> {

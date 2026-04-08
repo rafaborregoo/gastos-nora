@@ -21,6 +21,30 @@ function uniqueIds(values: Array<string | null | undefined>) {
   return [...new Set(values.filter(Boolean))] as string[];
 }
 
+async function getEditableAccount(accountId: string, householdId: string, userId: string) {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id, type, owner_user_id")
+    .eq("id", accountId)
+    .eq("household_id", householdId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  if (data.type === "shared") {
+    return data;
+  }
+
+  return data.owner_user_id === userId ? data : null;
+}
+
 function isAccountMembersTableMissing(error: { code?: string; message?: string } | null) {
   if (!error) {
     return false;
@@ -186,23 +210,23 @@ export async function upsertAccountAction(values: unknown): Promise<ActionResult
     }
 
     const householdMemberIds = new Set(householdBundle.members.map((member) => member.user_id));
-    const sanitizedOwnerId =
-      parsed.type === "shared" ? null : parsed.ownerUserId && householdMemberIds.has(parsed.ownerUserId) ? parsed.ownerUserId : null;
+    const sanitizedOwnerId = parsed.type === "shared" ? null : user.id;
     const requestedMemberIds = parsed.memberUserIds.filter((memberId) => householdMemberIds.has(memberId));
-    const linkedMemberIds =
-      parsed.type === "shared"
-        ? uniqueIds(requestedMemberIds)
-        : uniqueIds([sanitizedOwnerId, ...requestedMemberIds]);
-
-    if (parsed.type !== "shared" && !sanitizedOwnerId) {
-      return errorResult("Selecciona una persona titular válida.");
-    }
+    const linkedMemberIds = parsed.type === "shared" ? uniqueIds(requestedMemberIds) : uniqueIds([user.id]);
 
     if (parsed.type === "shared" && linkedMemberIds.length === 0) {
       return errorResult("Selecciona al menos una persona vinculada.");
     }
 
     const supabase = createServerSupabaseClient();
+    if (parsed.id) {
+      const editableAccount = await getEditableAccount(parsed.id, householdBundle.household.id, user.id);
+
+      if (!editableAccount) {
+        return errorResult("No puedes editar una cuenta privada de otra persona.");
+      }
+    }
+
     const payload = {
       household_id: householdBundle.household.id,
       owner_user_id: sanitizedOwnerId,
@@ -252,10 +276,15 @@ export async function upsertAccountAction(values: unknown): Promise<ActionResult
 
 export async function toggleAccountActiveAction(accountId: string, nextActiveState: boolean): Promise<ActionResult> {
   try {
-    const { householdBundle } = await getAppContext();
+    const { user, householdBundle } = await getAppContext();
 
-    if (!householdBundle) {
+    if (!user || !householdBundle) {
       return errorResult("Necesitas un hogar activo.");
+    }
+
+    const editableAccount = await getEditableAccount(accountId, householdBundle.household.id, user.id);
+    if (!editableAccount) {
+      return errorResult("No puedes modificar una cuenta privada de otra persona.");
     }
 
     const supabase = createServerSupabaseClient();
@@ -278,10 +307,15 @@ export async function toggleAccountActiveAction(accountId: string, nextActiveSta
 
 export async function deleteAccountAction(accountId: string): Promise<ActionResult> {
   try {
-    const { householdBundle } = await getAppContext();
+    const { user, householdBundle } = await getAppContext();
 
-    if (!householdBundle) {
+    if (!user || !householdBundle) {
       return errorResult("Necesitas un hogar activo.");
+    }
+
+    const editableAccount = await getEditableAccount(accountId, householdBundle.household.id, user.id);
+    if (!editableAccount) {
+      return errorResult("No puedes borrar una cuenta privada de otra persona.");
     }
 
     const supabase = createServerSupabaseClient();

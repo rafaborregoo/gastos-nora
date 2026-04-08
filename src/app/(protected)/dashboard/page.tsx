@@ -1,9 +1,8 @@
-import { ExpensePieChart } from "@/components/charts/expense-pie-chart";
-import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { AnalysisTabs } from "@/features/dashboard/analysis-tabs";
 import { BudgetPlanner } from "@/features/dashboard/budget-planner";
 import { formatCurrency } from "@/lib/formatters/currency";
 import { formatDisplayDate } from "@/lib/formatters/date";
@@ -40,28 +39,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Análisis" description="Analítica mensual, actividad por persona, objetivos por categoría y consejos." />
+      <PageHeader
+        title="Análisis"
+        description="Primero van los gráficos. Cambias entre tus cuentas, las compartidas y cada cuenta visible sin mezclar privadas de otra persona."
+      />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <p className="text-sm text-muted-foreground">Gasto mensual</p>
-          <p className="mt-3 text-2xl font-semibold sm:text-3xl">{formatCurrency(dashboard.totalExpenses)}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-muted-foreground">Ingreso mensual</p>
-          <p className="mt-3 text-2xl font-semibold sm:text-3xl">{formatCurrency(dashboard.totalIncome)}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-muted-foreground">Balance mensual</p>
-          <p className="mt-3 text-2xl font-semibold sm:text-3xl">{formatCurrency(dashboard.balance)}</p>
-        </Card>
-      </div>
+      <AnalysisTabs scopes={dashboard.analysisScopes} />
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <Card className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Ahorro objetivo</h2>
-            <p className="text-sm text-muted-foreground">Referencia automática del 20 % del ingreso del mes.</p>
+            <p className="text-sm text-muted-foreground">Referencia automática del 20 % del ingreso visible del mes.</p>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -86,7 +75,7 @@ export default async function DashboardPage() {
         <Card className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Consejos del mes</h2>
-            <p className="text-sm text-muted-foreground">Consejos generados a partir de ingresos, gasto y categorías.</p>
+            <p className="text-sm text-muted-foreground">Consejos generados a partir de ingresos y gasto de las cuentas que puedes ver.</p>
           </div>
           <div className="space-y-3">
             {dashboard.tips.map((tip) => (
@@ -108,7 +97,7 @@ export default async function DashboardPage() {
         <div>
           <h2 className="text-lg font-semibold">Actividad por persona</h2>
           <p className="text-sm text-muted-foreground">
-            Aquí ves quién está más activa, cuántos movimientos ha registrado y cuál fue su última actividad. No es presencia en tiempo real.
+            Así ves quién está activa, cuántos movimientos registra y cuál fue su última actividad visible.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -129,7 +118,7 @@ export default async function DashboardPage() {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Movimientos registrados</span>
+                    <span className="text-muted-foreground">Movimientos del mes</span>
                     <span className="font-semibold">{member.recordedTransactions}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
@@ -162,17 +151,6 @@ export default async function DashboardPage() {
       </Card>
 
       <BudgetPlanner dashboard={dashboard} savedGoals={savedGoals} />
-
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <h2 className="mb-2 text-lg font-semibold">Gasto por categoría</h2>
-          <ExpensePieChart data={dashboard.expenseByCategory} />
-        </Card>
-        <Card>
-          <h2 className="mb-2 text-lg font-semibold">Evolución mensual</h2>
-          <MonthlyTrendChart data={dashboard.monthlyTrend} />
-        </Card>
-      </div>
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold">Pendientes por transacción</h2>

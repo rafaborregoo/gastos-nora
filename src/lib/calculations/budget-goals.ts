@@ -52,26 +52,27 @@ export function buildDashboardGoals(params: {
   savedGoals: BudgetGoal[];
 }) {
   const expensesByName = new Map(params.categoryExpenses.map((item) => [item.categoryName, item.totalAmount]));
-  const activeGoals = params.savedGoals.filter((goal) => goal.is_active);
-  const goalMap = new Map(activeGoals.map((goal) => [goal.category_id, goal]));
-  const goalCategories = params.categories.filter((category) => category.kind === "expense" || category.kind === "both");
+  const categoryMap = new Map(
+    params.categories
+      .filter((category) => category.kind === "expense" || category.kind === "both")
+      .map((category) => [category.id, category])
+  );
 
-  const goals = goalCategories
-    .map((category) => {
-      const savedGoal = goalMap.get(category.id);
-      const spentAmount = roundToCents(expensesByName.get(category.name) ?? 0);
-      const targetAmount = roundToCents(
-        savedGoal?.target_amount ?? getSuggestedTargetAmount(category.name, spentAmount, params.totalIncome)
-      );
-      const targetPercent =
-        params.totalIncome > 0
-          ? roundToCents(savedGoal?.target_percent ?? (targetAmount > 0 ? (targetAmount / params.totalIncome) * 100 : 0))
-          : savedGoal?.target_percent ?? null;
+  return params.savedGoals
+    .filter((goal) => goal.is_active)
+    .map((savedGoal) => {
+      const category = categoryMap.get(savedGoal.category_id);
 
-      if (targetAmount <= 0 && spentAmount <= 0) {
+      if (!category) {
         return null;
       }
 
+      const spentAmount = roundToCents(expensesByName.get(category.name) ?? 0);
+      const targetAmount = roundToCents(savedGoal.target_amount ?? 0);
+      const targetPercent =
+        params.totalIncome > 0
+          ? roundToCents(savedGoal.target_percent ?? (targetAmount > 0 ? (targetAmount / params.totalIncome) * 100 : 0))
+          : savedGoal.target_percent ?? null;
       const varianceAmount = roundToCents(spentAmount - targetAmount);
       const progressRatio = targetAmount > 0 ? spentAmount / targetAmount : 0;
 
@@ -85,13 +86,12 @@ export function buildDashboardGoals(params: {
         targetPercent,
         progressRatio,
         varianceAmount,
-        isCustom: Boolean(savedGoal),
-        note: savedGoal?.note ?? null
+        isCustom: true,
+        note: savedGoal.note ?? null
       } satisfies DashboardGoal;
     })
-    .filter(Boolean) as DashboardGoal[];
-
-  return goals.sort((left, right) => right.spentAmount - left.spentAmount).slice(0, 6);
+    .filter((goal) => goal !== null)
+    .sort((left, right) => left.categoryName.localeCompare(right.categoryName, "es")) as DashboardGoal[];
 }
 
 export function buildDashboardTips(params: {

@@ -26,35 +26,46 @@ export default async function TransactionsPage({
     })) ?? [];
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Movimientos" description="Solo la información importante y acciones rápidas desde cada fila." />
-      <form className="grid gap-3 rounded-[28px] border border-border bg-card p-3 md:grid-cols-2 xl:grid-cols-5" action="/transactions">
-        <Select name="ownership" defaultValue={searchParams?.ownership ?? "all"}>
-          <option value="all">Todos</option>
-          <option value="mine">Míos</option>
-          <option value="others">Suyos</option>
-          <option value="shared">Compartidos</option>
-        </Select>
-        <Input type="month" name="month" defaultValue={searchParams?.month ?? new Date().toISOString().slice(0, 7)} />
-        <Select name="status" defaultValue={searchParams?.status ?? ""}>
-          <option value="">Todos los estados</option>
-          <option value="posted">Registrado</option>
-          <option value="partially_settled">Pendiente parcial</option>
-          <option value="settled">Liquidado</option>
-          <option value="cancelled">Cancelado</option>
-        </Select>
-        <Select name="categoryId" defaultValue={searchParams?.categoryId ?? ""}>
-          <option value="">Todas las categorías</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit">Filtrar</Button>
-      </form>
+    <div className="space-y-5">
+      <PageHeader
+        title="Movimientos"
+        description="Primero ves la lista. Los filtros quedan recogidos para que en móvil solo manden los datos importantes."
+      />
+
+      <details className="group rounded-[28px] border border-border bg-card">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold marker:hidden">
+          <span>Filtros y vista</span>
+          <span className="text-xs text-muted-foreground transition group-open:rotate-180">⌄</span>
+        </summary>
+        <form className="grid gap-3 border-t border-border p-3 md:grid-cols-2 xl:grid-cols-5" action="/transactions">
+          <Select name="ownership" defaultValue={searchParams?.ownership ?? "all"}>
+            <option value="all">Todos</option>
+            <option value="mine">Míos</option>
+            <option value="others">Suyos</option>
+            <option value="shared">Compartidos</option>
+          </Select>
+          <Input type="month" name="month" defaultValue={searchParams?.month ?? new Date().toISOString().slice(0, 7)} />
+          <Select name="status" defaultValue={searchParams?.status ?? ""}>
+            <option value="">Todos los estados</option>
+            <option value="posted">Registrado</option>
+            <option value="partially_settled">Pendiente parcial</option>
+            <option value="settled">Liquidado</option>
+            <option value="cancelled">Cancelado</option>
+          </Select>
+          <Select name="categoryId" defaultValue={searchParams?.categoryId ?? ""}>
+            <option value="">Todas las categorías</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+          <Button type="submit">Aplicar filtros</Button>
+        </form>
+      </details>
+
       {transactions.length ? (
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {transactions.map((transaction) => (
             <TransactionCard
               key={transaction.id}

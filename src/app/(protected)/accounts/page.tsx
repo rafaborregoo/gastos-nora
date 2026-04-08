@@ -1,9 +1,13 @@
 import { PageHeader } from "@/components/ui/page-header";
 import { AccountManager } from "@/features/accounts/account-manager";
-import { getAccounts, getCurrentHouseholdBundle } from "@/lib/queries/household-queries";
+import { getAccounts, getAppContext, getCurrentHouseholdBundle } from "@/lib/queries/household-queries";
 
 export default async function AccountsPage() {
-  const [accounts, householdBundle] = await Promise.all([getAccounts(undefined, { includeInactive: true }), getCurrentHouseholdBundle()]);
+  const [accounts, householdBundle, context] = await Promise.all([
+    getAccounts(undefined, { includeInactive: true }),
+    getCurrentHouseholdBundle(),
+    getAppContext()
+  ]);
   const members =
     householdBundle?.members.map((member) => ({
       id: member.user_id,
@@ -12,8 +16,16 @@ export default async function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Cuentas" description="Gestiona titulares, personas vinculadas, saldo inicial y archivado de cada cuenta." />
-      <AccountManager accounts={accounts} members={members} />
+      <PageHeader
+        title="Cuentas"
+        description="Gestionas tus cuentas personales y las compartidas. Las privadas de otras personas no aparecen aquí."
+      />
+      <AccountManager
+        accounts={accounts}
+        members={members}
+        currentUserId={context.user?.id}
+        currentUserLabel={context.profile?.full_name ?? context.profile?.email ?? "Mi cuenta"}
+      />
     </div>
   );
 }

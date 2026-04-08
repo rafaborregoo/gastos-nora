@@ -272,6 +272,11 @@ export interface AppDashboard {
   totalExpenses: number;
   totalIncome: number;
   balance: number;
+  myExpenses: number;
+  myIncome: number;
+  myRecordedTransactions: number;
+  myLastActivityAt: string | null;
+  myNetPosition: number;
   expenseByCategory: Array<{ categoryName: string; totalAmount: number }>;
   monthlyTrend: Array<{ month: string; income: number; expense: number; balance: number }>;
   pendingByTransaction: TransactionBalanceView[];
@@ -281,6 +286,7 @@ export interface AppDashboard {
   savingsProgress: number;
   availableGoalCategories: Pick<Category, "id" | "name" | "color" | "icon" | "kind">[];
   memberStats: DashboardMemberStat[];
+  analysisScopes: DashboardAnalysisScope[];
 }
 
 export interface DashboardGoal {
@@ -313,4 +319,20 @@ export interface DashboardMemberStat {
   netPosition: number;
   recordedTransactions: number;
   lastActivityAt: string | null;
+}
+
+export interface DashboardAnalysisScope {
+  id: string;
+  label: string;
+  description: string;
+  kind: "overview" | "personal" | "shared" | "account";
+  accountCount: number;
+  currentBalance: number;
+  totalExpenses: number;
+  totalIncome: number;
+  monthlyNet: number;
+  pendingAmount: number;
+  transactionCount: number;
+  expenseByCategory: Array<{ categoryName: string; totalAmount: number }>;
+  monthlyTrend: Array<{ month: string; income: number; expense: number; balance: number }>;
 }

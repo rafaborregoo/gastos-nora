@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -37,11 +37,25 @@ export function BudgetPlanner({
     }
   });
 
-  const goalByCategoryId = new Map(savedGoals.map((goal) => [goal.category_id, goal]));
+  const goalByCategoryId = useMemo(() => new Map(savedGoals.map((goal) => [goal.category_id, goal])), [savedGoals]);
   const selectedCategoryId = form.watch("categoryId");
   const selectedAmount = form.watch("targetAmount") ?? 0;
   const selectedGoal = dashboard.goals.find((goal) => goal.categoryId === selectedCategoryId);
   const projectedVariance = selectedGoal ? selectedGoal.spentAmount - selectedAmount : 0;
+
+  useEffect(() => {
+    if (!selectedCategoryId) {
+      return;
+    }
+
+    const savedGoal = goalByCategoryId.get(selectedCategoryId);
+    const dashboardGoal = dashboard.goals.find((goal) => goal.categoryId === selectedCategoryId);
+
+    form.setValue("id", savedGoal?.id);
+    form.setValue("targetAmount", savedGoal?.target_amount ?? dashboardGoal?.targetAmount ?? 100);
+    form.setValue("targetPercent", savedGoal?.target_percent ?? dashboardGoal?.targetPercent ?? undefined);
+    form.setValue("note", savedGoal?.note ?? dashboardGoal?.note ?? "");
+  }, [dashboard.goals, form, goalByCategoryId, selectedCategoryId]);
 
   const prefilling = (goal: DashboardGoal) => {
     const savedGoal = goalByCategoryId.get(goal.categoryId);
@@ -58,58 +72,70 @@ export function BudgetPlanner({
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <div className="space-y-4">
-        {dashboard.goals.map((goal) => {
-          const Icon = getCategoryIcon(goal.categoryIcon);
-          const isExceeded = goal.progressRatio >= 1;
-          const remainingAmount = Math.max(goal.targetAmount - goal.spentAmount, 0);
+        {dashboard.goals.length ? (
+          dashboard.goals.map((goal) => {
+            const Icon = getCategoryIcon(goal.categoryIcon);
+            const isExceeded = goal.progressRatio >= 1;
+            const remainingAmount = Math.max(goal.targetAmount - goal.spentAmount, 0);
 
-          return (
-            <Card key={goal.categoryId} className="space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span
-                    className="flex h-11 w-11 items-center justify-center rounded-2xl text-white"
-                    style={{ backgroundColor: goal.categoryColor ?? "#64748b" }}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="font-medium">{goal.categoryName}</p>
-                    <p className="text-sm text-muted-foreground">Límite mensual {formatCurrency(goal.targetAmount)}</p>
+            return (
+              <Card key={goal.categoryId} className="space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-11 w-11 items-center justify-center rounded-2xl text-white"
+                      style={{ backgroundColor: goal.categoryColor ?? "#64748b" }}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="font-medium">{goal.categoryName}</p>
+                      <p className="text-sm text-muted-foreground">Límite mensual {formatCurrency(goal.targetAmount)}</p>
+                    </div>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => prefilling(goal)}>
+                    Ajustar
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Gastado este mes</span>
+                    <span className={isExceeded ? "font-semibold text-danger" : "font-semibold"}>
+                      {formatCurrency(goal.spentAmount)}
+                    </span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full ${isExceeded ? "bg-danger" : "bg-primary"}`}
+                      style={{ width: `${Math.min(goal.progressRatio * 100, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Límite personalizado</span>
+                    <span>
+                      {isExceeded ? `Te pasas ${formatCurrency(goal.varianceAmount)}` : `Te quedan ${formatCurrency(remainingAmount)}`}
+                    </span>
                   </div>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => prefilling(goal)}>
-                  Ajustar
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Gastado este mes</span>
-                  <span className={isExceeded ? "font-semibold text-danger" : "font-semibold"}>
-                    {formatCurrency(goal.spentAmount)}
-                  </span>
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${isExceeded ? "bg-danger" : "bg-primary"}`}
-                    style={{ width: `${Math.min(goal.progressRatio * 100, 100)}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{goal.isCustom ? "Límite personalizado" : "Límite sugerido"}</span>
-                  <span>
-                    {isExceeded ? `Te pasas ${formatCurrency(goal.varianceAmount)}` : `Te quedan ${formatCurrency(remainingAmount)}`}
-                  </span>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
+              </Card>
+            );
+          })
+        ) : (
+          <Card className="space-y-3">
+            <h3 className="text-base font-semibold">Sin objetivos todavía</h3>
+            <p className="text-sm text-muted-foreground">
+              Las categorías solo aparecerán aquí cuando les guardes un límite manualmente.
+            </p>
+          </Card>
+        )}
       </div>
+
       <Card className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Editar objetivos</h2>
-          <p className="text-sm text-muted-foreground">Define un límite mensual en euros por categoría.</p>
+          <p className="text-sm text-muted-foreground">
+            Define un límite mensual en euros solo para las categorías que te interesen.
+          </p>
         </div>
         <form
           className="space-y-4"
@@ -123,11 +149,6 @@ export function BudgetPlanner({
               }
 
               toast.success(result.message);
-              form.reset({
-                categoryId: dashboard.availableGoalCategories[0]?.id ?? "",
-                targetAmount: 100,
-                note: ""
-              });
               router.refresh();
             });
           })}
@@ -143,13 +164,7 @@ export function BudgetPlanner({
             </Select>
           </FormField>
           <FormField label="Límite mensual" error={form.formState.errors.targetAmount?.message}>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              inputMode="decimal"
-              {...form.register("targetAmount", { valueAsNumber: true })}
-            />
+            <Input type="number" step="0.01" min="0" inputMode="decimal" {...form.register("targetAmount", { valueAsNumber: true })} />
           </FormField>
           <FormField label="Resumen rápido">
             <Input

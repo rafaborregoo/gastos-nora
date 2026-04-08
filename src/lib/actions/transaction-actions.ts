@@ -16,6 +16,24 @@ function compact<T>(items: Array<T | null | undefined>): T[] {
   return items.filter(Boolean) as T[];
 }
 
+async function getEditableAccountIds(householdId: string, userId: string) {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id, type, owner_user_id")
+    .eq("household_id", householdId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return new Set(
+    (data ?? [])
+      .filter((account) => account.type === "shared" || account.owner_user_id === userId)
+      .map((account) => account.id as string)
+  );
+}
+
 async function notifyUsers(params: {
   householdId: string;
   userIds: string[];
@@ -55,11 +73,21 @@ export async function saveTransactionAction(values: unknown): Promise<ActionResu
     }
 
     const supabase = createServerSupabaseClient();
+    const editableAccountIds = await getEditableAccountIds(householdBundle.household.id, user.id);
+
+    if (!editableAccountIds.has(parsed.accountId)) {
+      return errorResult("No puedes usar una cuenta privada de otra persona.");
+    }
+
     const destinationAccountId = parsed.destinationAccountId || null;
 
     let transferDestinationName: string | null = null;
 
     if (parsed.type === "transfer") {
+      if (!destinationAccountId || !editableAccountIds.has(destinationAccountId)) {
+        return errorResult("La transferencia solo puede hacerse entre tus cuentas o cuentas compartidas.");
+      }
+
       const { data: transferAccounts, error: transferAccountsError } = await supabase
         .from("accounts")
         .select("id, name")
@@ -286,6 +314,12 @@ export async function createSettlementAction(values: unknown): Promise<ActionRes
 
 export async function cancelTransactionAction(transactionId: string): Promise<ActionResult> {
   try {
+    const transaction = await getTransactionById(transactionId);
+
+    if (!transaction) {
+      return errorResult("No puedes cancelar un movimiento privado de otra persona.");
+    }
+
     const supabase = createServerSupabaseClient();
     const { error } = await supabase.from("transactions").update({ status: "cancelled" }).eq("id", transactionId);
 
