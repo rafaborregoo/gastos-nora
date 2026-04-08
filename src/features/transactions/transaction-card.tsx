@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { ChevronDown, MoreHorizontal, Pencil, ReceiptText, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -65,9 +65,9 @@ export function TransactionCard({
   members: Array<{ id: string; label: string }>;
 }) {
   const router = useRouter();
-  const actionsRef = useRef<HTMLDetailsElement | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const pendingAmount = transaction.balance?.pending_amount ?? 0;
@@ -76,7 +76,7 @@ export function TransactionCard({
   const transferDestination = getTransferDestination(transaction.metadata);
 
   return (
-    <article className="overflow-hidden rounded-[26px] border border-border bg-card shadow-soft">
+    <article className={cn("relative rounded-[26px] border border-border bg-card shadow-soft", isMenuOpen && "z-20")}>
       <div className="flex items-start gap-2 p-2.5 sm:p-3">
         <button
           type="button"
@@ -116,59 +116,67 @@ export function TransactionCard({
           </div>
         </button>
 
-        <details ref={actionsRef} className="relative shrink-0">
-          <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground transition hover:bg-muted">
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((current) => !current)}
+            className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground transition hover:bg-muted"
+          >
             <MoreHorizontal className="h-4 w-4" />
-          </summary>
-          <div className="absolute right-0 top-12 z-10 flex w-56 flex-col rounded-2xl border border-border bg-popover p-2 shadow-soft">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-popover-foreground transition hover:bg-muted"
-              onClick={() => {
-                actionsRef.current?.removeAttribute("open");
-                setIsEditOpen(true);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-              Editar
-            </button>
-            {canSettle ? (
-              <Link
-                href={`/add?mode=settlement&transactionId=${transaction.id}`}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-popover-foreground transition hover:bg-muted"
+          </button>
+          {isMenuOpen ? (
+            <div className="absolute right-0 top-12 z-[60] flex w-56 flex-col rounded-2xl border border-border bg-popover p-2 shadow-soft">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-popover-foreground transition hover:bg-muted"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsEditOpen(true);
+                }}
               >
-                <ReceiptText className="h-4 w-4" />
-                Registrar liquidación
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground">
-                <ReceiptText className="h-4 w-4" />
-                Sin liquidación pendiente
-              </span>
-            )}
-            <button
-              type="button"
-              disabled={isPending || !canCancel}
-              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted-foreground"
-              onClick={() => {
-                startTransition(async () => {
-                  const result = await cancelTransactionAction(transaction.id);
+                <Pencil className="h-4 w-4" />
+                Editar
+              </button>
+              {canSettle ? (
+                <Link
+                  href={`/add?mode=settlement&transactionId=${transaction.id}`}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-popover-foreground transition hover:bg-muted"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <ReceiptText className="h-4 w-4" />
+                  Registrar liquidación
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground">
+                  <ReceiptText className="h-4 w-4" />
+                  Sin liquidación pendiente
+                </span>
+              )}
+              <button
+                type="button"
+                disabled={isPending || !canCancel}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted-foreground"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  startTransition(async () => {
+                    const result = await cancelTransactionAction(transaction.id);
 
-                  if (!result.ok) {
-                    toast.error(result.message);
-                    return;
-                  }
+                    if (!result.ok) {
+                      toast.error(result.message);
+                      return;
+                    }
 
-                  toast.success(result.message);
-                  router.refresh();
-                });
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-              {canCancel ? "Cancelar" : "Ya cancelado"}
-            </button>
-          </div>
-        </details>
+                    toast.success(result.message);
+                    router.refresh();
+                  });
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                {canCancel ? "Cancelar" : "Ya cancelado"}
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {isExpanded ? (
