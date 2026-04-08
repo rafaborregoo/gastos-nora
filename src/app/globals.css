@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 42 60% 97%;
+  --foreground: 217 33% 12%;
+  --muted: 40 35% 93%;
+  --muted-foreground: 215 16% 42%;
+  --card: 0 0% 100%;
+  --card-foreground: 217 33% 12%;
+  --border: 30 24% 88%;
+  --ring: 160 63% 39%;
+  --primary: 160 63% 39%;
+  --primary-foreground: 155 48% 98%;
+  --secondary: 23 83% 56%;
+  --secondary-foreground: 33 100% 98%;
+  --accent: 198 84% 52%;
+  --accent-foreground: 205 100% 98%;
+  --success: 152 57% 42%;
+  --success-foreground: 144 60% 98%;
+  --warning: 39 91% 52%;
+  --warning-foreground: 40 100% 10%;
+  --danger: 3 76% 55%;
+  --danger-foreground: 0 0% 98%;
+}
+
+.dark {
+  --background: 218 39% 10%;
+  --foreground: 38 67% 96%;
+  --muted: 217 24% 18%;
+  --muted-foreground: 214 17% 70%;
+  --card: 220 32% 12%;
+  --card-foreground: 38 67% 96%;
+  --border: 220 19% 22%;
+  --ring: 159 61% 48%;
+  --primary: 159 61% 48%;
+  --primary-foreground: 157 59% 10%;
+  --secondary: 18 84% 61%;
+  --secondary-foreground: 20 100% 8%;
+  --accent: 197 92% 56%;
+  --accent-foreground: 197 100% 10%;
+  --success: 150 55% 46%;
+  --success-foreground: 150 100% 8%;
+  --warning: 41 90% 58%;
+  --warning-foreground: 38 100% 10%;
+  --danger: 4 74% 58%;
+  --danger-foreground: 0 0% 98%;
+}
+
+* {
+  @apply border-border;
+}
+
+html {
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply min-h-screen bg-background text-foreground antialiased;
+  background-image:
+    radial-gradient(circle at top right, hsl(var(--primary) / 0.14), transparent 32%),
+    radial-gradient(circle at bottom left, hsl(var(--secondary) / 0.12), transparent 24%);
+}
+
+a {
+  @apply text-inherit no-underline;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+button,
+[role="button"],
+summary,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+@layer base {
+  h1, h2, h3, h4 {
+    @apply tracking-tight;
+  }
+}

@@ -1,0 +1,47 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { getAuthenticatedUser } from "@/lib/queries/auth-queries";
+
+export default async function AcceptInvitePage({
+  searchParams
+}: {
+  searchParams?: { email?: string };
+}) {
+  const user = await getAuthenticatedUser();
+
+  if (user) {
+    redirect("/");
+  }
+
+  const email = searchParams?.email ?? "";
+
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-2xl items-center px-4 py-10">
+      <Card className="w-full space-y-6 p-8">
+        <div className="space-y-2">
+          <CardTitle>Invitacion recibida</CardTitle>
+          <CardDescription>
+            Si ya tienes cuenta, entra con el mismo correo. Si todavia no la tienes, registrate primero y NORA Gastos te unira automaticamente al hogar pendiente.
+          </CardDescription>
+        </div>
+        <div className="flex flex-col gap-3 md:flex-row">
+          <Link
+            href={`/register${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+            className={cn("inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground")}
+          >
+            Registrarme
+          </Link>
+          <Link
+            href={`/login${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+            className={cn("inline-flex h-11 items-center justify-center rounded-2xl border border-border px-4 text-sm font-semibold")}
+          >
+            Ya tengo cuenta
+          </Link>
+        </div>
+      </Card>
+    </main>
+  );
+}
