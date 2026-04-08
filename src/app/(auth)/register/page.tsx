@@ -6,7 +6,7 @@ import { getAuthenticatedUser } from "@/lib/queries/auth-queries";
 export default async function RegisterPage({
   searchParams
 }: {
-  searchParams?: { email?: string };
+  searchParams?: { email?: string; invite?: string };
 }) {
   const user = await getAuthenticatedUser();
 
@@ -14,6 +14,5 @@ export default async function RegisterPage({
     redirect("/");
   }
 
-  return <RegisterForm initialEmail={searchParams?.email ?? ""} />;
+  return <RegisterForm initialEmail={searchParams?.email ?? ""} inviteFlow={searchParams?.invite === "1"} />;
 }
-

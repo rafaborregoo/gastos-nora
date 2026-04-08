@@ -311,4 +311,6 @@ export interface DashboardMemberStat {
   totalPaidExpenses: number;
   totalRecordedIncome: number;
   netPosition: number;
+  recordedTransactions: number;
+  lastActivityAt: string | null;
 }

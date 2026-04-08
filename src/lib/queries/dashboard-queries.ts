@@ -131,7 +131,12 @@ export async function getDashboardData(month: string) {
             (!transaction.beneficiary_user_id && transaction.paid_by_user_id === member.user_id))
       )
       .reduce((sum, transaction) => sum + transaction.amount, 0),
-    netPosition: balances.get(member.user_id) ?? 0
+    netPosition: balances.get(member.user_id) ?? 0,
+    recordedTransactions: transactions.filter((transaction) => transaction.created_by === member.user_id).length,
+    lastActivityAt:
+      transactions
+        .filter((transaction) => transaction.created_by === member.user_id)
+        .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())[0]?.created_at ?? null
   }));
 
   return buildMonthlyDashboard({

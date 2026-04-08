@@ -15,7 +15,7 @@ import { signInAction } from "@/lib/actions/auth-actions";
 import { loginSchema } from "@/lib/validators/auth";
 import type { AuthFormValues } from "@/types/forms";
 
-export function LoginForm({ initialEmail = "" }: { initialEmail?: string }) {
+export function LoginForm({ initialEmail = "", inviteFlow = false }: { initialEmail?: string; inviteFlow?: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const form = useForm<AuthFormValues>({
@@ -26,11 +26,13 @@ export function LoginForm({ initialEmail = "" }: { initialEmail?: string }) {
     }
   });
 
+  const registerHref = inviteFlow ? `/register?invite=1${initialEmail ? `&email=${encodeURIComponent(initialEmail)}` : ""}` : "/register";
+
   return (
     <Card className="w-full max-w-md p-8">
       <div className="mb-6 space-y-2">
         <CardTitle>Entra en tu hogar financiero</CardTitle>
-        <CardDescription>Accede para ver cuentas, movimientos, liquidaciones y dashboard mensual.</CardDescription>
+        <CardDescription>Accede para ver cuentas, movimientos, liquidaciones y análisis mensual.</CardDescription>
       </div>
       <form
         className="space-y-4"
@@ -44,7 +46,7 @@ export function LoginForm({ initialEmail = "" }: { initialEmail?: string }) {
             }
 
             toast.success(result.message);
-            router.replace("/");
+            router.replace(inviteFlow ? "/welcome?fromInvite=1" : "/");
             router.refresh();
           });
         })}
@@ -52,7 +54,7 @@ export function LoginForm({ initialEmail = "" }: { initialEmail?: string }) {
         <FormField label="Email" error={form.formState.errors.email?.message}>
           <Input type="email" autoComplete="email" {...form.register("email")} />
         </FormField>
-        <FormField label="Contrasena" error={form.formState.errors.password?.message}>
+        <FormField label="Contraseña" error={form.formState.errors.password?.message}>
           <Input type="password" autoComplete="current-password" {...form.register("password")} />
         </FormField>
         <Button type="submit" className="w-full" disabled={isPending}>
@@ -60,12 +62,11 @@ export function LoginForm({ initialEmail = "" }: { initialEmail?: string }) {
         </Button>
       </form>
       <p className="mt-6 text-sm text-muted-foreground">
-        No tienes cuenta?{" "}
-        <Link href="/register" className="font-semibold text-primary">
-          Registrate
+        ¿No tienes cuenta?{" "}
+        <Link href={registerHref} className="font-semibold text-primary">
+          Regístrate
         </Link>
       </p>
     </Card>
   );
 }
-

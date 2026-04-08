@@ -6,7 +6,7 @@ import { getAuthenticatedUser } from "@/lib/queries/auth-queries";
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams?: { email?: string };
+  searchParams?: { email?: string; invite?: string };
 }) {
   const user = await getAuthenticatedUser();
 
@@ -14,5 +14,5 @@ export default async function LoginPage({
     redirect("/");
   }
 
-  return <LoginForm initialEmail={searchParams?.email ?? ""} />;
+  return <LoginForm initialEmail={searchParams?.email ?? ""} inviteFlow={searchParams?.invite === "1"} />;
 }

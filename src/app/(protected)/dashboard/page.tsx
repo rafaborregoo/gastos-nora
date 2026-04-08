@@ -12,6 +12,25 @@ import { getDashboardData } from "@/lib/queries/dashboard-queries";
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 
+function getActivityBadge(lastActivityAt: string | null) {
+  if (!lastActivityAt) {
+    return { label: "Sin actividad", intent: "neutral" as const };
+  }
+
+  const now = Date.now();
+  const diffHours = Math.abs(now - new Date(lastActivityAt).getTime()) / (1000 * 60 * 60);
+
+  if (diffHours < 24) {
+    return { label: "Activa hoy", intent: "success" as const };
+  }
+
+  if (diffHours < 24 * 7) {
+    return { label: "Activa esta semana", intent: "info" as const };
+  }
+
+  return { label: "Actividad antigua", intent: "warning" as const };
+}
+
 export default async function DashboardPage() {
   const [dashboard, savedGoals] = await Promise.all([getDashboardData(currentMonth), getBudgetGoals()]);
 
@@ -21,7 +40,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Análisis" description="Analítica mensual, objetivos por categoría y consejos para mejorar el margen." />
+      <PageHeader title="Análisis" description="Analítica mensual, actividad por persona, objetivos por categoría y consejos." />
+
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <p className="text-sm text-muted-foreground">Gasto mensual</p>
@@ -62,10 +82,11 @@ export default async function DashboardPage() {
             </div>
           </div>
         </Card>
+
         <Card className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Consejos del mes</h2>
-            <p className="text-sm text-muted-foreground">Consejos generados a partir de vuestros ingresos, gasto y categorías.</p>
+            <p className="text-sm text-muted-foreground">Consejos generados a partir de ingresos, gasto y categorías.</p>
           </div>
           <div className="space-y-3">
             {dashboard.tips.map((tip) => (
@@ -85,40 +106,58 @@ export default async function DashboardPage() {
 
       <Card className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Resumen por persona</h2>
+          <h2 className="text-lg font-semibold">Actividad por persona</h2>
           <p className="text-sm text-muted-foreground">
-            Así puedes ver quién ha pagado más, quién ha registrado ingresos y cómo va la posición neta de cada persona.
+            Aquí ves quién está más activa, cuántos movimientos ha registrado y cuál fue su última actividad. No es presencia en tiempo real.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {dashboard.memberStats.map((member) => (
-            <div key={member.userId} className="rounded-[24px] border border-border bg-background/70 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="font-medium">{member.label}</p>
-                <Badge intent={member.role === "owner" ? "info" : "neutral"}>
-                  {member.role === "owner" ? "Propietaria/o" : "Miembro"}
-                </Badge>
+          {dashboard.memberStats.map((member) => {
+            const activity = getActivityBadge(member.lastActivityAt);
+
+            return (
+              <div key={member.userId} className="rounded-[24px] border border-border bg-background/70 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="font-medium">{member.label}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge intent={member.role === "owner" ? "info" : "neutral"}>
+                      {member.role === "owner" ? "Propietaria/o" : "Miembro"}
+                    </Badge>
+                    <Badge intent={activity.intent}>{activity.label}</Badge>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Movimientos registrados</span>
+                    <span className="font-semibold">{member.recordedTransactions}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Última actividad</span>
+                    <span className="font-semibold">
+                      {member.lastActivityAt ? formatDisplayDate(member.lastActivityAt, "d MMM yyyy, HH:mm") : "Sin datos"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Gastos pagados</span>
+                    <span className="font-semibold">{formatCurrency(member.totalPaidExpenses)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Ingresos registrados</span>
+                    <span className="font-semibold">{formatCurrency(member.totalRecordedIncome)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Posición neta</span>
+                    <span className={`font-semibold ${member.netPosition >= 0 ? "text-success" : "text-danger"}`}>
+                      {member.netPosition >= 0
+                        ? `Le deben ${formatCurrency(member.netPosition)}`
+                        : `Debe ${formatCurrency(Math.abs(member.netPosition))}`}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Gastos pagados</span>
-                  <span className="font-semibold">{formatCurrency(member.totalPaidExpenses)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Ingresos registrados</span>
-                  <span className="font-semibold">{formatCurrency(member.totalRecordedIncome)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Posición neta</span>
-                  <span className={`font-semibold ${member.netPosition >= 0 ? "text-success" : "text-danger"}`}>
-                    {member.netPosition >= 0
-                      ? `Le deben ${formatCurrency(member.netPosition)}`
-                      : `Debe ${formatCurrency(Math.abs(member.netPosition))}`}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
 
@@ -134,6 +173,7 @@ export default async function DashboardPage() {
           <MonthlyTrendChart data={dashboard.monthlyTrend} />
         </Card>
       </div>
+
       <Card>
         <h2 className="mb-4 text-lg font-semibold">Pendientes por transacción</h2>
         <div className="space-y-3">
