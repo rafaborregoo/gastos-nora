@@ -66,8 +66,10 @@ export function TransactionCard({
           <p className="font-medium">{transaction.account?.name ?? "Sin cuenta"}</p>
         </div>
         <div>
-          <p className="text-muted-foreground">Pendiente</p>
-          <p className="font-medium">{formatCurrency(transaction.balance?.pending_amount ?? 0, transaction.currency)}</p>
+          <p className="text-muted-foreground">Pendiente de liquidar</p>
+          <p className="font-medium">
+            {transaction.is_shared ? formatCurrency(transaction.balance?.pending_amount ?? 0, transaction.currency) : "Sin pendiente"}
+          </p>
         </div>
       </div>
 

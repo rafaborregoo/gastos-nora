@@ -4,6 +4,7 @@ interface AccountTransactionSummary {
   type: TransactionType;
   amount: number;
   metadata: Json;
+  accountId: string;
 }
 
 function roundToCents(value: number) {
@@ -18,24 +19,46 @@ export function isOpeningBalanceMetadata(metadata: Json) {
   return metadata.system === "opening_balance";
 }
 
-export function getOpeningBalanceAmount(transactions: AccountTransactionSummary[]) {
-  const openingBalance = transactions.find((transaction) => isOpeningBalanceMetadata(transaction.metadata));
+function getDestinationAccountId(metadata: Json) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const value = metadata.destination_account_id;
+  return typeof value === "string" ? value : null;
+}
+
+export function getOpeningBalanceAmount(transactions: AccountTransactionSummary[], accountId?: string) {
+  const openingBalance = transactions.find(
+    (transaction) => transaction.accountId === accountId && isOpeningBalanceMetadata(transaction.metadata)
+  );
   return roundToCents(openingBalance?.amount ?? 0);
 }
 
-export function calculateAccountCurrentBalance(transactions: AccountTransactionSummary[]) {
+export function calculateAccountCurrentBalance(transactions: AccountTransactionSummary[], accountId: string) {
   return roundToCents(
     transactions.reduce((total, transaction) => {
       if (transaction.type === "expense") {
-        return total - transaction.amount;
+        return transaction.accountId === accountId ? total - transaction.amount : total;
       }
 
       if (transaction.type === "income" || transaction.type === "adjustment") {
-        return total + transaction.amount;
+        return transaction.accountId === accountId ? total + transaction.amount : total;
+      }
+
+      if (transaction.type === "transfer") {
+        const destinationAccountId = getDestinationAccountId(transaction.metadata);
+
+        if (transaction.accountId === accountId) {
+          return total - transaction.amount;
+        }
+
+        if (destinationAccountId === accountId) {
+          return total + transaction.amount;
+        }
       }
 
       return total;
     }, 0)
   );
 }
-

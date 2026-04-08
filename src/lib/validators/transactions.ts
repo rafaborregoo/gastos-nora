@@ -17,6 +17,7 @@ export const transactionSchema = z
     currency: z.string().min(3).max(3),
     transactionDate: z.string().min(1, "La fecha es obligatoria."),
     accountId: z.string().uuid("Selecciona una cuenta."),
+    destinationAccountId: z.string().uuid().optional().or(z.literal("")),
     categoryId: z.string().uuid().optional().or(z.literal("")),
     paidByUserId: z.string().uuid().optional().or(z.literal("")),
     beneficiaryUserId: z.string().uuid().optional().or(z.literal("")),
@@ -44,6 +45,24 @@ export const transactionSchema = z
         });
       }
     }
+
+    if (value.type === "transfer") {
+      if (!value.destinationAccountId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Selecciona una cuenta de destino.",
+          path: ["destinationAccountId"]
+        });
+      }
+
+      if (value.destinationAccountId && value.destinationAccountId === value.accountId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La cuenta de origen y la de destino no pueden ser la misma.",
+          path: ["destinationAccountId"]
+        });
+      }
+    }
   });
 
 export const settlementSchema = z.object({
@@ -57,4 +76,3 @@ export const settlementSchema = z.object({
   method: z.enum(["bizum", "cash", "bank_transfer", "card", "other"]),
   note: z.string().optional()
 });
-

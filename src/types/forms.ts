@@ -85,6 +85,7 @@ export interface TransactionFormValues {
   currency: string;
   transactionDate: string;
   accountId: string;
+  destinationAccountId?: string;
   categoryId?: string;
   paidByUserId?: string;
   beneficiaryUserId?: string;

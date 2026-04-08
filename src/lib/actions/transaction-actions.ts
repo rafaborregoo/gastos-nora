@@ -55,6 +55,31 @@ export async function saveTransactionAction(values: unknown): Promise<ActionResu
     }
 
     const supabase = createServerSupabaseClient();
+    const destinationAccountId = parsed.destinationAccountId || null;
+
+    let transferDestinationName: string | null = null;
+
+    if (parsed.type === "transfer") {
+      const { data: transferAccounts, error: transferAccountsError } = await supabase
+        .from("accounts")
+        .select("id, name")
+        .eq("household_id", householdBundle.household.id)
+        .in("id", [parsed.accountId, destinationAccountId].filter(Boolean) as string[]);
+
+      if (transferAccountsError) {
+        return errorResult(transferAccountsError.message);
+      }
+
+      const sourceAccount = transferAccounts?.find((account) => account.id === parsed.accountId);
+      const destinationAccount = transferAccounts?.find((account) => account.id === destinationAccountId);
+
+      if (!sourceAccount || !destinationAccount) {
+        return errorResult("La transferencia necesita una cuenta de origen y otra de destino dentro del hogar.");
+      }
+
+      transferDestinationName = destinationAccount.name as string;
+    }
+
     const generatedSplits =
       parsed.isShared && parsed.type === "expense"
         ? buildSplits({
@@ -110,7 +135,9 @@ export async function saveTransactionAction(values: unknown): Promise<ActionResu
       status: "posted",
       external_ref: parsed.externalRef || null,
       metadata: {
-        note: parsed.note ?? ""
+        note: parsed.note ?? "",
+        destination_account_id: parsed.type === "transfer" ? destinationAccountId : null,
+        destination_account_name: parsed.type === "transfer" ? transferDestinationName : null
       }
     };
 

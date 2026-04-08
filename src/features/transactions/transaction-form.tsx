@@ -39,6 +39,10 @@ export function TransactionForm({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const transferMetadata =
+    initialTransaction?.metadata && typeof initialTransaction.metadata === "object" && !Array.isArray(initialTransaction.metadata)
+      ? initialTransaction.metadata
+      : null;
   const defaultValues: TransactionFormValues = {
     id: initialTransaction?.id,
     type: initialTransaction?.type ?? initialType,
@@ -48,11 +52,13 @@ export function TransactionForm({
     currency: initialTransaction?.currency ?? "EUR",
     transactionDate: initialTransaction?.transaction_date ?? toDateInputValue(new Date()),
     accountId: initialTransaction?.account_id ?? accounts[0]?.id ?? "",
+    destinationAccountId:
+      typeof transferMetadata?.destination_account_id === "string" ? transferMetadata.destination_account_id : "",
     categoryId: initialTransaction?.category_id ?? "",
     paidByUserId: initialTransaction?.paid_by_user_id ?? members[0]?.id ?? "",
     beneficiaryUserId: initialTransaction?.beneficiary_user_id ?? "",
-    isShared: initialTransaction?.is_shared ?? initialType === "expense",
-    splitMethod: initialTransaction?.split_method ?? "equal",
+    isShared: initialTransaction?.is_shared ?? false,
+    splitMethod: initialTransaction?.split_method ?? "none",
     splits:
       initialTransaction?.splits.map((split) => ({
         userId: split.user_id,
@@ -66,7 +72,7 @@ export function TransactionForm({
         sharePercent: members.length ? 100 / members.length : 0,
         isDebtor: true
       })),
-    note: String((initialTransaction?.metadata as { note?: string } | undefined)?.note ?? ""),
+    note: String((transferMetadata as { note?: string } | undefined)?.note ?? ""),
     externalRef: initialTransaction?.external_ref ?? ""
   };
 
@@ -83,11 +89,25 @@ export function TransactionForm({
   const isShared = useWatch({ control: form.control, name: "isShared" });
   const amount = useWatch({ control: form.control, name: "amount" });
   const type = useWatch({ control: form.control, name: "type" });
+  const selectedAccountId = useWatch({ control: form.control, name: "accountId" });
 
   useEffect(() => {
+    if (type === "transfer") {
+      form.setValue("isShared", false);
+      form.setValue("splitMethod", "none");
+      form.setValue("categoryId", "");
+      form.setValue("paidByUserId", "");
+      form.setValue("beneficiaryUserId", "");
+      return;
+    }
+
     if (!isShared || type !== "expense") {
       form.setValue("splitMethod", "none");
       return;
+    }
+
+    if (form.getValues("splitMethod") === "none") {
+      form.setValue("splitMethod", "equal");
     }
 
     if (!form.getValues("splits").length) {
@@ -127,23 +147,35 @@ export function TransactionForm({
     () => categories.filter((category) => category.kind === "both" || category.kind === type),
     [categories, type]
   );
+  const destinationAccounts = useMemo(
+    () => accounts.filter((account) => account.id !== selectedAccountId),
+    [accounts, selectedAccountId]
+  );
 
   return (
     <Card className="p-4 sm:p-5 md:p-6">
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <CardTitle>{initialTransaction ? "Editar movimiento" : "Nuevo movimiento"}</CardTitle>
-          <CardDescription>Registra el movimiento respetando quién pagó, cómo se reparte y qué queda pendiente.</CardDescription>
+          <CardDescription>
+            Registra gastos, ingresos o transferencias entre cuentas para saber exactamente de dónde sale cada euro.
+          </CardDescription>
         </div>
-        <div className="flex w-full rounded-full bg-muted p-1 md:w-auto">
-          {(["expense", "income"] as const).map((item) => (
+        <div className="grid w-full grid-cols-3 rounded-full bg-muted p-1 md:w-auto">
+          {(
+            [
+              { value: "expense", label: "Gasto" },
+              { value: "income", label: "Ingreso" },
+              { value: "transfer", label: "Transferencia" }
+            ] as const
+          ).map((item) => (
             <button
-              key={item}
+              key={item.value}
               type="button"
-              className={`flex-1 rounded-full px-4 py-2.5 text-sm font-medium md:flex-none ${type === item ? "bg-card shadow-soft" : "text-muted-foreground"}`}
-              onClick={() => form.setValue("type", item)}
+              className={`rounded-full px-4 py-2.5 text-sm font-medium ${type === item.value ? "bg-card shadow-soft" : "text-muted-foreground"}`}
+              onClick={() => form.setValue("type", item.value)}
             >
-              {item === "expense" ? "Gasto" : "Ingreso"}
+              {item.label}
             </button>
           ))}
         </div>
@@ -168,7 +200,10 @@ export function TransactionForm({
       >
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Título" error={form.formState.errors.title?.message}>
-            <Input {...form.register("title")} />
+            <Input
+              placeholder={type === "transfer" ? "Ej: Aportación a NORA" : undefined}
+              {...form.register("title")}
+            />
           </FormField>
           <FormField label="Importe" error={form.formState.errors.amount?.message}>
             <Input type="number" step="0.01" inputMode="decimal" {...form.register("amount", { valueAsNumber: true })} />
@@ -176,7 +211,7 @@ export function TransactionForm({
           <FormField label="Fecha" error={form.formState.errors.transactionDate?.message}>
             <Input type="date" {...form.register("transactionDate")} />
           </FormField>
-          <FormField label="Cuenta" error={form.formState.errors.accountId?.message}>
+          <FormField label={type === "transfer" ? "Cuenta de origen" : "Cuenta"} error={form.formState.errors.accountId?.message}>
             <Select {...form.register("accountId")}>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
@@ -185,29 +220,55 @@ export function TransactionForm({
               ))}
             </Select>
           </FormField>
-          <FormField label="Categoría" error={form.formState.errors.categoryId?.message}>
-            <Select {...form.register("categoryId")}>
-              <option value="">Sin categoría</option>
-              {categoryOptions.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <FormField label="Pagado por" error={form.formState.errors.paidByUserId?.message}>
-            <Select {...form.register("paidByUserId")}>
-              {members.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+
+          {type === "transfer" ? (
+            <FormField label="Cuenta de destino" error={form.formState.errors.destinationAccountId?.message}>
+              <Select {...form.register("destinationAccountId")}>
+                <option value="">Selecciona una cuenta</option>
+                {destinationAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          ) : (
+            <FormField label="Categoría" error={form.formState.errors.categoryId?.message}>
+              <Select {...form.register("categoryId")}>
+                <option value="">Sin categoría</option>
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          )}
+
+          {type !== "transfer" ? (
+            <FormField label={type === "income" ? "Registrado por" : "Pagado por"} error={form.formState.errors.paidByUserId?.message}>
+              <Select {...form.register("paidByUserId")}>
+                <option value="">Selecciona una persona</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          ) : null}
         </div>
 
         <FormField label="Descripción" error={form.formState.errors.description?.message}>
-          <Textarea rows={4} {...form.register("description")} />
+          <Textarea
+            rows={4}
+            placeholder={
+              type === "transfer"
+                ? "Ej: Muevo dinero desde mi cuenta personal a la cuenta de NORA para cubrir gastos de empresa."
+                : undefined
+            }
+            {...form.register("description")}
+          />
         </FormField>
 
         {type === "expense" ? (
@@ -224,6 +285,9 @@ export function TransactionForm({
                 Compartido
               </label>
             </div>
+            <p className="text-sm text-muted-foreground">
+              Márcalo solo si otra persona tiene que devolverte una parte. Si es un gasto solo tuyo, déjalo desactivado.
+            </p>
 
             {isShared ? (
               <>
@@ -263,6 +327,13 @@ export function TransactionForm({
                 </div>
               </>
             ) : null}
+          </div>
+        ) : null}
+
+        {type === "transfer" ? (
+          <div className="rounded-[24px] border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+            La transferencia resta saldo en la cuenta de origen y lo suma en la cuenta de destino. No cuenta como gasto
+            ni como ingreso del hogar.
           </div>
         ) : null}
 

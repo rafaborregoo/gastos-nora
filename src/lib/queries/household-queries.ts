@@ -222,7 +222,6 @@ export async function getAccounts(
       .from("transactions")
       .select("id, account_id, type, amount, metadata, status")
       .eq("household_id", id)
-      .in("account_id", accountIds)
       .neq("status", "cancelled")
   ]);
 
@@ -278,6 +277,7 @@ export async function getAccounts(
   const transactionMap = new Map<
     string,
     Array<{
+      accountId: string;
       type: "expense" | "income" | "transfer" | "adjustment";
       amount: number;
       metadata: Json;
@@ -290,13 +290,32 @@ export async function getAccounts(
     amount: number;
     metadata: Json;
   }>) {
-    const current = transactionMap.get(row.account_id) ?? [];
+    const sourceAccountId = row.account_id;
+    const metadata = row.metadata ?? {};
+    const current = transactionMap.get(sourceAccountId) ?? [];
     current.push({
+      accountId: sourceAccountId,
       type: row.type,
       amount: Number(row.amount),
-      metadata: row.metadata ?? {}
+      metadata
     });
-    transactionMap.set(row.account_id, current);
+    transactionMap.set(sourceAccountId, current);
+
+    if (row.type === "transfer" && typeof metadata === "object" && !Array.isArray(metadata)) {
+      const destinationAccountId =
+        typeof metadata.destination_account_id === "string" ? metadata.destination_account_id : null;
+
+      if (destinationAccountId) {
+        const destinationTransactions = transactionMap.get(destinationAccountId) ?? [];
+        destinationTransactions.push({
+          accountId: sourceAccountId,
+          type: row.type,
+          amount: Number(row.amount),
+          metadata
+        });
+        transactionMap.set(destinationAccountId, destinationTransactions);
+      }
+    }
   }
 
   return accounts.map((account) => {
@@ -318,8 +337,8 @@ export async function getAccounts(
     return {
       ...account,
       members: derivedMembers,
-      opening_balance: getOpeningBalanceAmount(transactions),
-      current_balance: calculateAccountCurrentBalance(transactions)
+      opening_balance: getOpeningBalanceAmount(transactions, account.id),
+      current_balance: calculateAccountCurrentBalance(transactions, account.id)
     };
   });
 }
