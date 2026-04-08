@@ -29,13 +29,21 @@ export function TransactionForm({
   categories,
   members,
   initialTransaction,
-  initialType = "expense"
+  initialType = "expense",
+  embedded = false,
+  submitLabel = "Guardar movimiento",
+  onSuccess,
+  onCancel
 }: {
   accounts: Array<{ id: string; name: string; currency: string; type: string }>;
   categories: Category[];
   members: MemberOption[];
   initialTransaction?: TransactionWithRelations | null;
   initialType?: TransactionFormValues["type"];
+  embedded?: boolean;
+  submitLabel?: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -43,6 +51,7 @@ export function TransactionForm({
     initialTransaction?.metadata && typeof initialTransaction.metadata === "object" && !Array.isArray(initialTransaction.metadata)
       ? initialTransaction.metadata
       : null;
+
   const defaultValues: TransactionFormValues = {
     id: initialTransaction?.id,
     type: initialTransaction?.type ?? initialType,
@@ -152,8 +161,8 @@ export function TransactionForm({
     [accounts, selectedAccountId]
   );
 
-  return (
-    <Card className="p-4 sm:p-5 md:p-6">
+  const content = (
+    <>
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <CardTitle>{initialTransaction ? "Editar movimiento" : "Nuevo movimiento"}</CardTitle>
@@ -172,7 +181,9 @@ export function TransactionForm({
             <button
               key={item.value}
               type="button"
-              className={`rounded-full px-4 py-2.5 text-sm font-medium ${type === item.value ? "bg-card shadow-soft" : "text-muted-foreground"}`}
+              className={`rounded-full px-4 py-2.5 text-sm font-medium ${
+                type === item.value ? "bg-card shadow-soft" : "text-muted-foreground"
+              }`}
               onClick={() => form.setValue("type", item.value)}
             >
               {item.label}
@@ -193,17 +204,17 @@ export function TransactionForm({
             }
 
             toast.success(result.message);
-            router.push("/transactions");
+            onSuccess?.();
+            if (!embedded) {
+              router.push("/transactions");
+            }
             router.refresh();
           });
         })}
       >
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Título" error={form.formState.errors.title?.message}>
-            <Input
-              placeholder={type === "transfer" ? "Ej: Aportación a NORA" : undefined}
-              {...form.register("title")}
-            />
+            <Input placeholder={type === "transfer" ? "Ej: Aportación a NORA" : undefined} {...form.register("title")} />
           </FormField>
           <FormField label="Importe" error={form.formState.errors.amount?.message}>
             <Input type="number" step="0.01" inputMode="decimal" {...form.register("amount", { valueAsNumber: true })} />
@@ -332,8 +343,8 @@ export function TransactionForm({
 
         {type === "transfer" ? (
           <div className="rounded-[24px] border border-border bg-background/60 p-4 text-sm text-muted-foreground">
-            La transferencia resta saldo en la cuenta de origen y lo suma en la cuenta de destino. No cuenta como gasto
-            ni como ingreso del hogar.
+            La transferencia resta saldo en la cuenta de origen y lo suma en la cuenta de destino. No cuenta como gasto ni
+            como ingreso del hogar.
           </div>
         ) : null}
 
@@ -341,15 +352,33 @@ export function TransactionForm({
           <Textarea rows={3} {...form.register("note")} />
         </FormField>
 
-        <div className="flex flex-col gap-3 border-t border-border pt-2 md:flex-row md:border-0 md:pt-0">
+        <div className="flex flex-col gap-3 border-t border-border pt-2 md:flex-row md:justify-end md:border-0 md:pt-0">
           <Button type="submit" disabled={isPending} className="w-full md:w-auto">
-            Guardar movimiento
+            {submitLabel}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()} className="w-full md:w-auto">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (onCancel) {
+                onCancel();
+                return;
+              }
+
+              router.back();
+            }}
+            className="w-full md:w-auto"
+          >
             Cancelar
           </Button>
         </div>
       </form>
-    </Card>
+    </>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <Card className="p-4 sm:p-5 md:p-6">{content}</Card>;
 }
