@@ -365,3 +365,5 @@ OPENAI_THEME_GENERATION_ENABLED=false
 - `APP_URL` debe ser el dominio final real para que auth, correos e invitaciones redirijan bien.
 - `next.config.mjs` esta preparado con `output: "standalone"` para facilitar despliegues en servidor Node.
 - `serverActions.allowedOrigins` tambien toma el host de `APP_URL`, asi que en produccion no hace falta dejarlo fijo a `localhost`.
+#   g a s t o s - n o r a  
+ 
