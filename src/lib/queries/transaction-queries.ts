@@ -12,7 +12,7 @@ import type {
 } from "@/types/database";
 import { deriveTransactionStatus, mapBalanceView } from "@/lib/calculations/transactions";
 import { getAuthenticatedUser } from "@/lib/queries/auth-queries";
-import { getCurrentHouseholdBundle } from "@/lib/queries/household-queries";
+import { getAccounts, getCurrentHouseholdBundle } from "@/lib/queries/household-queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 interface TransactionFilters {
@@ -76,6 +76,14 @@ function buildMonthRange(month?: string) {
   return { start, end: nextMonth.toISOString().slice(0, 10) };
 }
 
+function getDestinationAccountId(metadata: Transaction["metadata"]) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  return typeof metadata.destination_account_id === "string" ? metadata.destination_account_id : null;
+}
+
 export async function getTransactions(filters: TransactionFilters = {}) {
   noStore();
   const [context, user] = await Promise.all([getCurrentHouseholdBundle(), getAuthenticatedUser()]);
@@ -85,6 +93,8 @@ export async function getTransactions(filters: TransactionFilters = {}) {
   }
 
   const currentUserId = user?.id;
+  const visibleAccounts = await getAccounts(context.household.id, { includeInactive: true });
+  const visibleAccountIds = new Set(visibleAccounts.map((account) => account.id));
   const supabase = createServerSupabaseClient();
   let query = supabase
     .from("transactions")
@@ -132,6 +142,14 @@ export async function getTransactions(filters: TransactionFilters = {}) {
   });
 
   return items.filter((transaction) => {
+    const destinationAccountId = getDestinationAccountId(transaction.metadata);
+    const touchesVisibleAccount =
+      visibleAccountIds.has(transaction.account_id) || (destinationAccountId ? visibleAccountIds.has(destinationAccountId) : false);
+
+    if (!touchesVisibleAccount) {
+      return false;
+    }
+
     if (!canAccessTransaction(transaction, currentUserId)) {
       return false;
     }
@@ -181,6 +199,17 @@ export async function getTransactionById(id: string) {
     return null;
   }
 
+  const context = await getCurrentHouseholdBundle();
+  const visibleAccounts = context ? await getAccounts(context.household.id, { includeInactive: true }) : [];
+  const visibleAccountIds = new Set(visibleAccounts.map((account) => account.id));
+  const destinationAccountId = getDestinationAccountId(transaction.metadata);
+  const touchesVisibleAccount =
+    visibleAccountIds.has(transaction.account_id) || (destinationAccountId ? visibleAccountIds.has(destinationAccountId) : false);
+
+  if (!touchesVisibleAccount) {
+    return null;
+  }
+
   if (!canAccessTransaction(transaction as TransactionWithRelations & { account: { owner_user_id?: string | null } | null }, user?.id)) {
     return null;
   }
@@ -210,6 +239,8 @@ export async function getTransactionBalances(): Promise<TransactionBalanceView[]
     return [];
   }
 
+  const visibleAccounts = await getAccounts(context.household.id, { includeInactive: true });
+  const visibleAccountIds = new Set(visibleAccounts.map((account) => account.id));
   const visibleTransactionsResponse = await supabase
     .from("transactions")
     .select("id, household_id, created_by, paid_by_user_id, beneficiary_user_id, is_shared, account:accounts(id, type, owner_user_id), splits:transaction_splits(user_id), settlements:settlements(*)")
@@ -221,6 +252,8 @@ export async function getTransactionBalances(): Promise<TransactionBalanceView[]
 
   const visibleTransactionIds = ((visibleTransactionsResponse.data ?? []) as unknown as TransactionVisibilityRow[]).filter(
     (transaction) =>
+      transaction.account?.id &&
+      visibleAccountIds.has(transaction.account.id) &&
       canAccessTransaction(transaction as TransactionWithRelations & { account: { owner_user_id?: string | null } | null }, user.id)
   );
 

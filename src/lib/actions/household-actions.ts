@@ -183,6 +183,8 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
     }
 
     const householdId = household.id as string;
+    await supabase.from("profiles").update({ active_household_id: householdId }).eq("id", user.id);
+
     const { error: memberError } = await supabase.from("household_members").insert({
       household_id: householdId,
       user_id: user.id,
@@ -203,21 +205,41 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
       is_active: true
     }));
 
-    const { error: accountError } = await supabase.from("accounts").insert(accounts);
+    const { data: createdAccounts, error: accountError } = await supabase.from("accounts").insert(accounts).select("id, type");
 
     if (accountError) {
       return errorResult(accountError.message);
+    }
+
+    const sharedAccountIds = ((createdAccounts ?? []) as Array<{ id: string; type: string }>)
+      .filter((account) => account.type === "shared")
+      .map((account) => account.id);
+
+    if (sharedAccountIds.length) {
+      const { error: accountMemberError } = await supabase.from("account_members").upsert(
+        sharedAccountIds.map((accountId, index) => ({
+          account_id: accountId,
+          user_id: user.id,
+          role: index === 0 ? "owner" : "member"
+        })),
+        { onConflict: "account_id,user_id" }
+      );
+
+      if (accountMemberError) {
+        return errorResult(accountMemberError.message);
+      }
     }
 
     let invitationMessage = "";
 
     if (normalizedInviteEmail) {
       if (existingProfile?.data?.id && existingProfile.data.id !== user.id) {
+        const existingProfileId = existingProfile.data.id as string;
         const existingMember = await supabase
           .from("household_members")
           .select("id")
           .eq("household_id", householdId)
-          .eq("user_id", existingProfile.data.id as string)
+          .eq("user_id", existingProfileId)
           .maybeSingle();
 
         if (existingMember.error) {
@@ -227,13 +249,28 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
         if (!existingMember.data) {
           const { error: invitedMemberError } = await supabase.from("household_members").insert({
             household_id: householdId,
-            user_id: existingProfile.data.id as string,
+            user_id: existingProfileId,
             role: "member",
             status: "active"
           });
 
           if (invitedMemberError) {
             return errorResult(invitedMemberError.message);
+          }
+        }
+
+        if (sharedAccountIds.length) {
+          const { error: invitedAccountMemberError } = await supabase.from("account_members").upsert(
+            sharedAccountIds.map((accountId) => ({
+              account_id: accountId,
+              user_id: existingProfileId,
+              role: "member"
+            })),
+            { onConflict: "account_id,user_id" }
+          );
+
+          if (invitedAccountMemberError) {
+            return errorResult(invitedAccountMemberError.message);
           }
         }
 
@@ -264,6 +301,44 @@ export async function createHouseholdAction(values: unknown): Promise<ActionResu
     revalidateAppPaths();
 
     return successResult(`Hogar creado correctamente.${invitationMessage}`, { householdId });
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function setActiveHouseholdAction(householdId: string): Promise<ActionResult> {
+  try {
+    const { user } = await getAppContext();
+
+    if (!user) {
+      return errorResult("Debes iniciar sesión.");
+    }
+
+    const supabase = createServerSupabaseClient();
+    const membershipResponse = await supabase
+      .from("household_members")
+      .select("id")
+      .eq("household_id", householdId)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (membershipResponse.error) {
+      return errorResult(membershipResponse.error.message);
+    }
+
+    if (!membershipResponse.data) {
+      return errorResult("No perteneces a ese hogar.");
+    }
+
+    const { error } = await supabase.from("profiles").update({ active_household_id: householdId }).eq("id", user.id);
+
+    if (error) {
+      return errorResult(error.message);
+    }
+
+    revalidateAppPaths();
+    return successResult("Hogar activo actualizado.");
   } catch (error) {
     return handleActionError(error);
   }

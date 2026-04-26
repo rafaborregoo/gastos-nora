@@ -26,10 +26,6 @@ export function buildSplits({
 }) {
   const baseAmount = roundToCents(amount);
 
-  if (!memberIds.length) {
-    return [];
-  }
-
   if (splitMethod === "none") {
     return manualSplits?.slice(0, 1).map((split) => ({
       userId: split.userId,
@@ -40,6 +36,10 @@ export function buildSplits({
   }
 
   if (splitMethod === "equal") {
+    if (!memberIds.length) {
+      return [];
+    }
+
     const evenShare = roundToCents(baseAmount / memberIds.length);
 
     return memberIds.map((userId, index) => {

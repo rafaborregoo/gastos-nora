@@ -16,20 +16,62 @@ function compact<T>(items: Array<T | null | undefined>): T[] {
   return items.filter(Boolean) as T[];
 }
 
-async function getEditableAccountIds(householdId: string, userId: string) {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("id, type, owner_user_id")
-    .eq("household_id", householdId);
+function findDuplicate(values: string[]) {
+  const seen = new Set<string>();
 
-  if (error) {
-    throw new Error(error.message);
+  for (const value of values) {
+    if (seen.has(value)) {
+      return value;
+    }
+
+    seen.add(value);
   }
 
+  return null;
+}
+
+function getPendingAmountForDebtor(params: {
+  transaction: NonNullable<Awaited<ReturnType<typeof getTransactionById>>>;
+  debtorUserId: string;
+  receiverUserId: string;
+}) {
+  if (!params.transaction.paid_by_user_id || params.receiverUserId !== params.transaction.paid_by_user_id) {
+    return 0;
+  }
+
+  const debtorShare = params.transaction.splits
+    .filter((split) => split.user_id === params.debtorUserId)
+    .reduce((sum, split) => sum + split.share_amount, 0);
+  const alreadySettled = params.transaction.settlements
+    .filter((settlement) => settlement.from_user_id === params.debtorUserId && settlement.to_user_id === params.receiverUserId)
+    .reduce((sum, settlement) => sum + settlement.amount, 0);
+
+  return Math.round(Math.max(debtorShare - alreadySettled, 0) * 100) / 100;
+}
+
+async function getEditableAccountIds(householdId: string, userId: string) {
+  const supabase = createServerSupabaseClient();
+  const [accountsResponse, memberAccountsResponse] = await Promise.all([
+    supabase
+    .from("accounts")
+    .select("id, type, owner_user_id")
+      .eq("household_id", householdId),
+    supabase.from("account_members").select("account_id").eq("user_id", userId)
+  ]);
+
+  if (accountsResponse.error) {
+    throw new Error(accountsResponse.error.message);
+  }
+
+  if (memberAccountsResponse.error) {
+    throw new Error(memberAccountsResponse.error.message);
+  }
+
+  const linkedSharedAccountIds = new Set((memberAccountsResponse.data ?? []).map((row) => row.account_id as string));
+
   return new Set(
-    (data ?? [])
-      .filter((account) => account.type === "shared" || account.owner_user_id === userId)
+    (accountsResponse.data ?? [])
+      .filter((account) => account.owner_user_id === userId || (account.type === "shared" && linkedSharedAccountIds.has(account.id as string)))
       .map((account) => account.id as string)
   );
 }
@@ -74,9 +116,18 @@ export async function saveTransactionAction(values: unknown): Promise<ActionResu
 
     const supabase = createServerSupabaseClient();
     const editableAccountIds = await getEditableAccountIds(householdBundle.household.id, user.id);
+    const householdMemberIds = new Set(householdBundle.members.map((member) => member.user_id));
 
     if (!editableAccountIds.has(parsed.accountId)) {
       return errorResult("No puedes usar una cuenta privada de otra persona.");
+    }
+
+    if (parsed.type !== "transfer" && (!parsed.paidByUserId || !householdMemberIds.has(parsed.paidByUserId))) {
+      return errorResult("Selecciona una persona válida como pagador o registrador.");
+    }
+
+    if (parsed.beneficiaryUserId && !householdMemberIds.has(parsed.beneficiaryUserId)) {
+      return errorResult("La persona beneficiaria debe pertenecer al hogar activo.");
     }
 
     const destinationAccountId = parsed.destinationAccountId || null;
@@ -120,6 +171,22 @@ export async function saveTransactionAction(values: unknown): Promise<ActionResu
 
     if (parsed.isShared && parsed.type === "expense" && !validateSplitTotal(parsed.amount, generatedSplits)) {
       return errorResult("La suma de los repartos no coincide con el importe.");
+    }
+
+    if (parsed.isShared && parsed.type === "expense") {
+      const splitUserIds = generatedSplits.map((split) => split.userId);
+
+      if (findDuplicate(splitUserIds)) {
+        return errorResult("No puede haber personas duplicadas en el reparto.");
+      }
+
+      if (splitUserIds.some((memberId) => !householdMemberIds.has(memberId))) {
+        return errorResult("Todos los repartos deben pertenecer a miembros activos del hogar.");
+      }
+
+      if (parsed.paidByUserId && !splitUserIds.includes(parsed.paidByUserId)) {
+        return errorResult("El pagador debe aparecer también en el reparto del gasto.");
+      }
     }
 
     if (parsed.id) {
@@ -249,6 +316,11 @@ export async function createSettlementAction(values: unknown): Promise<ActionRes
       return errorResult("La persona que paga y la que recibe no pueden ser la misma.");
     }
 
+    const householdMemberIds = new Set(householdBundle.members.map((member) => member.user_id));
+    if (!householdMemberIds.has(parsed.fromUserId) || !householdMemberIds.has(parsed.toUserId)) {
+      return errorResult("Las dos personas de la liquidación deben pertenecer al hogar activo.");
+    }
+
     let transactionTitle = "Liquidación general";
 
     if (parsed.transactionId) {
@@ -261,6 +333,20 @@ export async function createSettlementAction(values: unknown): Promise<ActionRes
       const pendingAmount = calculatePendingAmount(transaction, transaction.splits, transaction.settlements);
       if (parsed.amount > pendingAmount) {
         return errorResult("La liquidación no puede superar el importe pendiente.");
+      }
+
+      const debtorPending = getPendingAmountForDebtor({
+        transaction,
+        debtorUserId: parsed.fromUserId,
+        receiverUserId: parsed.toUserId
+      });
+
+      if (debtorPending <= 0) {
+        return errorResult("Esta liquidación debe ir del deudor al pagador del gasto compartido.");
+      }
+
+      if (parsed.amount > debtorPending) {
+        return errorResult("La liquidación no puede superar lo pendiente para esa persona.");
       }
 
       transactionTitle = transaction.title;

@@ -66,6 +66,7 @@ export async function getCurrentProfile(userArg?: User | null): Promise<Profile 
     email: user.email ?? null,
     full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
     avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    active_household_id: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };

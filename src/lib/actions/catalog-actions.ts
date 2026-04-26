@@ -251,7 +251,7 @@ export async function upsertAccountAction(values: unknown): Promise<ActionResult
       memberUserIds: linkedMemberIds
     });
 
-    if (!memberSync.ok && linkedMemberIds.length > 1) {
+    if (!memberSync.ok && parsed.type === "shared") {
       return errorResult(
         "Para vincular varias personas a una cuenta debes crear primero la tabla account_members en Supabase."
       );

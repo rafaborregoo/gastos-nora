@@ -33,14 +33,30 @@ async function getCurrentHouseholdBundleForUser(user: User | null): Promise<Hous
   }
 
   const supabase = createServerSupabaseClient();
-  const membershipResponse = await supabase
+  const profile = await getCurrentProfile(user);
+  let membershipQuery = supabase
     .from("household_members")
     .select("id, household_id, user_id, role, status, created_at")
     .eq("user_id", user.id)
     .eq("status", "active")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
+
+  if (profile?.active_household_id) {
+    membershipQuery = membershipQuery.eq("household_id", profile.active_household_id);
+  }
+
+  let membershipResponse = await membershipQuery.limit(1).maybeSingle();
+
+  if (!membershipResponse.data && profile?.active_household_id) {
+    membershipResponse = await supabase
+      .from("household_members")
+      .select("id, household_id, user_id, role, status, created_at")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+  }
 
   if (membershipResponse.error) {
     throw new Error(membershipResponse.error.message);
@@ -142,6 +158,25 @@ export async function getAppContext() {
           });
         }
 
+        await admin.from("profiles").update({ active_household_id: invitation.household_id }).eq("id", user.id);
+
+        const sharedAccountsResponse = await admin
+          .from("accounts")
+          .select("id")
+          .eq("household_id", invitation.household_id)
+          .eq("type", "shared");
+
+        if (!sharedAccountsResponse.error && sharedAccountsResponse.data?.length) {
+          await admin.from("account_members").upsert(
+            sharedAccountsResponse.data.map((account) => ({
+              account_id: account.id as string,
+              user_id: user.id,
+              role: "member"
+            })),
+            { onConflict: "account_id,user_id" }
+          );
+        }
+
         await admin
           .from("household_invitations")
           .update({
@@ -160,6 +195,78 @@ export async function getAppContext() {
     profile,
     householdBundle
   };
+}
+
+export async function getUserHouseholdBundles(): Promise<HouseholdBundle[]> {
+  noStore();
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const supabase = createServerSupabaseClient();
+  const membershipsResponse = await supabase
+    .from("household_members")
+    .select("id, household_id, user_id, role, status, created_at, household:households(*)")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+
+  if (membershipsResponse.error) {
+    throw new Error(membershipsResponse.error.message);
+  }
+
+  const householdIds = (membershipsResponse.data ?? []).map((item) => item.household_id as string);
+  if (!householdIds.length) {
+    return [];
+  }
+
+  const membersResponse = await supabase
+    .from("household_members")
+    .select("id, household_id, user_id, role, status, created_at, profile:profiles(id, email, full_name, avatar_url)")
+    .in("household_id", householdIds)
+    .order("created_at", { ascending: true });
+
+  if (membersResponse.error) {
+    throw new Error(membersResponse.error.message);
+  }
+
+  const membersByHousehold = new Map<string, HouseholdBundle["members"]>();
+  for (const row of (membersResponse.data ?? []) as unknown[]) {
+    const record = row as HouseholdBundle["members"][number] & {
+      profile:
+        | Array<{
+            id: string;
+            email: string | null;
+            full_name: string | null;
+            avatar_url: string | null;
+          }>
+        | HouseholdBundle["members"][number]["profile"];
+    };
+    const members = membersByHousehold.get(record.household_id) ?? [];
+    members.push({
+      ...record,
+      profile: Array.isArray(record.profile) ? record.profile[0] ?? null : record.profile
+    });
+    membersByHousehold.set(record.household_id, members);
+  }
+
+  return ((membershipsResponse.data ?? []) as unknown[]).flatMap((item) => {
+    const record = item as { household: Household | Household[] | null };
+    const household = Array.isArray(record.household) ? record.household[0] : record.household;
+
+    if (!household) {
+      return [];
+    }
+
+    return [
+      {
+        household,
+        members: membersByHousehold.get(household.id) ?? []
+      }
+    ];
+  });
 }
 
 function isAccountMembersTableMissing(error: { code?: string; message?: string } | null) {
@@ -348,7 +455,7 @@ export async function getAccounts(
       }
 
       if (account.type === "shared") {
-        return true;
+        return account.members.some((member) => member.user_id === user.id);
       }
 
       return account.owner_user_id === user.id;

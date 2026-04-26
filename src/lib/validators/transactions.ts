@@ -28,6 +28,14 @@ export const transactionSchema = z
     externalRef: z.string().optional()
   })
   .superRefine((value, ctx) => {
+    if (value.type !== "transfer" && !value.paidByUserId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Selecciona quién paga o registra el movimiento.",
+        path: ["paidByUserId"]
+      });
+    }
+
     if (value.isShared && value.type === "expense") {
       if (value.splitMethod === "none") {
         ctx.addIssue({
@@ -41,6 +49,23 @@ export const transactionSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Debes indicar a quién afecta el reparto.",
+          path: ["splits"]
+        });
+      }
+
+      const uniqueUserIds = new Set(value.splits.map((split) => split.userId));
+      if (uniqueUserIds.size !== value.splits.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "No puede haber personas duplicadas en el reparto.",
+          path: ["splits"]
+        });
+      }
+
+      if (value.paidByUserId && !uniqueUserIds.has(value.paidByUserId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "El pagador debe aparecer también en el reparto.",
           path: ["splits"]
         });
       }
