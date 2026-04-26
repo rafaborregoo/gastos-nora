@@ -19,6 +19,21 @@ import { createSupabaseAdminClient, hasSupabaseAdminEnv } from "@/lib/supabase/a
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser, getCurrentProfile } from "@/lib/queries/auth-queries";
 
+function isOptionalSharedSchemaUnavailable(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  return (
+    error.code === "42703" ||
+    error.code === "42501" ||
+    error.code === "PGRST200" ||
+    error.message?.toLowerCase().includes("active_household_id") === true ||
+    error.message?.toLowerCase().includes("account_members") === true ||
+    error.message?.toLowerCase().includes("permission denied") === true
+  );
+}
+
 export async function getCurrentHouseholdBundle(): Promise<HouseholdBundle | null> {
   noStore();
   const user = await getAuthenticatedUser();
@@ -48,6 +63,17 @@ async function getCurrentHouseholdBundleForUser(user: User | null): Promise<Hous
   let membershipResponse = await membershipQuery.limit(1).maybeSingle();
 
   if (!membershipResponse.data && profile?.active_household_id) {
+    membershipResponse = await supabase
+      .from("household_members")
+      .select("id, household_id, user_id, role, status, created_at")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+  }
+
+  if (membershipResponse.error && profile?.active_household_id && isOptionalSharedSchemaUnavailable(membershipResponse.error)) {
     membershipResponse = await supabase
       .from("household_members")
       .select("id, household_id, user_id, role, status, created_at")
@@ -158,7 +184,14 @@ export async function getAppContext() {
           });
         }
 
-        await admin.from("profiles").update({ active_household_id: invitation.household_id }).eq("id", user.id);
+        const activeHouseholdResponse = await admin
+          .from("profiles")
+          .update({ active_household_id: invitation.household_id })
+          .eq("id", user.id);
+
+        if (activeHouseholdResponse.error && !isOptionalSharedSchemaUnavailable(activeHouseholdResponse.error)) {
+          throw new Error(activeHouseholdResponse.error.message);
+        }
 
         const sharedAccountsResponse = await admin
           .from("accounts")
@@ -167,7 +200,7 @@ export async function getAppContext() {
           .eq("type", "shared");
 
         if (!sharedAccountsResponse.error && sharedAccountsResponse.data?.length) {
-          await admin.from("account_members").upsert(
+          const accountMembersResponse = await admin.from("account_members").upsert(
             sharedAccountsResponse.data.map((account) => ({
               account_id: account.id as string,
               user_id: user.id,
@@ -175,6 +208,10 @@ export async function getAppContext() {
             })),
             { onConflict: "account_id,user_id" }
           );
+
+          if (accountMembersResponse.error && !isOptionalSharedSchemaUnavailable(accountMembersResponse.error)) {
+            throw new Error(accountMembersResponse.error.message);
+          }
         }
 
         await admin
@@ -214,6 +251,10 @@ export async function getUserHouseholdBundles(): Promise<HouseholdBundle[]> {
     .order("created_at", { ascending: true });
 
   if (membershipsResponse.error) {
+    if (isOptionalSharedSchemaUnavailable(membershipsResponse.error)) {
+      return [];
+    }
+
     throw new Error(membershipsResponse.error.message);
   }
 
@@ -229,6 +270,10 @@ export async function getUserHouseholdBundles(): Promise<HouseholdBundle[]> {
     .order("created_at", { ascending: true });
 
   if (membersResponse.error) {
+    if (isOptionalSharedSchemaUnavailable(membersResponse.error)) {
+      return [];
+    }
+
     throw new Error(membersResponse.error.message);
   }
 

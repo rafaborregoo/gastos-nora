@@ -64,6 +64,19 @@ function isAuditLogUnavailable(error: { code?: string; message?: string } | null
   );
 }
 
+function isBalanceViewUnavailable(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  return (
+    error.code === "42P01" ||
+    error.code === "42501" ||
+    error.code === "PGRST205" ||
+    error.message?.toLowerCase().includes("v_transaction_balance") === true
+  );
+}
+
 function buildMonthRange(month?: string) {
   if (!month) {
     return null;
@@ -190,7 +203,7 @@ export async function getTransactionById(id: string) {
     throw new Error(auditResponse.error.message);
   }
 
-  if (balanceResponse.error) {
+  if (balanceResponse.error && !isBalanceViewUnavailable(balanceResponse.error)) {
     throw new Error(balanceResponse.error.message);
   }
 
@@ -243,7 +256,7 @@ export async function getTransactionBalances(): Promise<TransactionBalanceView[]
   const visibleAccountIds = new Set(visibleAccounts.map((account) => account.id));
   const visibleTransactionsResponse = await supabase
     .from("transactions")
-    .select("id, household_id, created_by, paid_by_user_id, beneficiary_user_id, is_shared, account:accounts(id, type, owner_user_id), splits:transaction_splits(user_id), settlements:settlements(*)")
+    .select("*, account:accounts(id, name, type, currency, owner_user_id), category:categories(id, name, kind, color, icon), paid_by_profile:profiles!transactions_paid_by_user_id_fkey(id, full_name, email), beneficiary_profile:profiles!transactions_beneficiary_user_id_fkey(id, full_name, email), splits:transaction_splits(*), settlements:settlements(*)")
     .eq("household_id", context.household.id);
 
   if (visibleTransactionsResponse.error) {
@@ -271,9 +284,21 @@ export async function getTransactionBalances(): Promise<TransactionBalanceView[]
     )
     .order("transaction_date", { ascending: false });
 
-  if (error) {
+  if (error && !isBalanceViewUnavailable(error)) {
     throw new Error(error.message);
   }
 
-  return (data as TransactionBalanceView[]) ?? [];
+  if (!error) {
+    return (data as TransactionBalanceView[]) ?? [];
+  }
+
+  return visibleTransactionIds
+    .map((transaction) =>
+      mapBalanceView(
+        transaction as unknown as Transaction,
+        ((transaction as unknown as TransactionWithRelations).splits ?? []) as TransactionSplit[],
+        ((transaction as unknown as TransactionWithRelations).settlements ?? []) as Settlement[]
+      )
+    )
+    .sort((left, right) => (left.transaction_date < right.transaction_date ? 1 : -1));
 }

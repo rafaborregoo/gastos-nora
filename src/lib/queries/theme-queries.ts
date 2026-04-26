@@ -15,6 +15,7 @@ function isThemePreferencesTableMissing(error: { code?: string; message?: string
   return (
     error.code === "PGRST205" ||
     error.code === "42P01" ||
+    error.code === "42501" ||
     error.message?.toLowerCase().includes("user_theme_preferences") === true
   );
 }

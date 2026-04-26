@@ -19,6 +19,19 @@ function isMissingSessionError(error: { status?: number; code?: string; message?
   );
 }
 
+function isProfileReadUnavailable(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  return (
+    error.code === "42703" ||
+    error.code === "42501" ||
+    error.message?.toLowerCase().includes("active_household_id") === true ||
+    error.message?.toLowerCase().includes("permission denied") === true
+  );
+}
+
 const readAuthenticatedUser = cache(async (): Promise<User | null> => {
   const supabase = createServerSupabaseClient();
   const {
@@ -54,6 +67,18 @@ export async function getCurrentProfile(userArg?: User | null): Promise<Profile 
   const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
 
   if (error) {
+    if (isProfileReadUnavailable(error)) {
+      return {
+        id: user.id,
+        email: user.email ?? null,
+        full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
+        avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        active_household_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+
     throw new Error(error.message);
   }
 
